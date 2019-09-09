@@ -838,6 +838,9 @@ public final class LifecycleModule extends Module {
       if (roll < likelihoodOfDeath) {
         person.recordDeath(time, NATURAL_CAUSES);
       }
+    } else if (person.uncoveredHealthRecord != null) {
+      // Search for treatment in uncoveredHealthrecord, increase probability of death based on real data
+      // person.recordDeath(...)
     }
   }
 

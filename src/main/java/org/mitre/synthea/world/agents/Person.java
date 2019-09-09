@@ -20,6 +20,7 @@ import org.mitre.synthea.helpers.Config;
 import org.mitre.synthea.helpers.ConstantValueGenerator;
 import org.mitre.synthea.helpers.Utilities;
 import org.mitre.synthea.helpers.ValueGenerator;
+import org.mitre.synthea.modules.QualityOfLifeModule;
 import org.mitre.synthea.world.concepts.HealthRecord;
 import org.mitre.synthea.world.concepts.HealthRecord.Code;
 import org.mitre.synthea.world.concepts.HealthRecord.Encounter;
@@ -89,7 +90,7 @@ public class Person implements Serializable, QuadTreeData {
   // Uncovered Health Record entries
   public HealthRecord uncoveredHealthRecord;
   // Full Real Covered HealthRecord entries
-  public HealthRecord fullCoveredHealthRecord;
+  public HealthRecord coveredHealthRecord;
   // Individual provider Health Records (If hasMultipleRecords)
   public Map<String, HealthRecord> records;
   public boolean hasMultipleRecords;
@@ -122,7 +123,7 @@ public class Person implements Serializable, QuadTreeData {
     }
     record = new HealthRecord(this);
     uncoveredHealthRecord = new HealthRecord(this);
-    fullCoveredHealthRecord = new HealthRecord(this);
+    coveredHealthRecord = new HealthRecord(this);
     // 128 because it's a nice power of 2, and nobody will reach that age
     payerHistory = new Payer[128];
     payerOwnerHistory = new String[128];
@@ -408,7 +409,7 @@ public class Person implements Serializable, QuadTreeData {
       return this.uncoveredHealthRecord;
     }
 
-    HealthRecord returnValue = this.fullCoveredHealthRecord;
+    HealthRecord returnValue = this.coveredHealthRecord;
     if (hasMultipleRecords) {
       String key = provider.uuid;
       if (!records.containsKey(key)) {
@@ -660,6 +661,7 @@ public class Person implements Serializable, QuadTreeData {
   /**
    * Returns whether the person's yearly expenses exceed their income. If they do,
    * then they will switch to No Insurance.
+   * NOTE: This could result in person being kicked off Medicaid/Medicare.
    * 
    * @param time the current time
    */
@@ -724,7 +726,7 @@ public class Person implements Serializable, QuadTreeData {
    * @param time the time to retrive the qols for.
    */
   public double getQolsForYear(int year) {
-    return ((Map<Integer, Double>) this.attributes.get("QOL")).get(year);
+    return ((Map<Integer, Double>) this.attributes.get(QualityOfLifeModule.QOLS)).get(year);
   }
 
   /*

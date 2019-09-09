@@ -19,6 +19,11 @@ import org.mitre.synthea.world.concepts.HealthRecord.Entry;
 
 public class QualityOfLifeModule extends Module {
 
+  public static final String QALY = "QALY";
+  public static final String DALY = "DALY";
+  public static final String QOLS = "QOLS";
+
+
   /**
    * Disability Weight Lookup Table.
    * <br/>
@@ -35,16 +40,16 @@ public class QualityOfLifeModule extends Module {
   @SuppressWarnings("unchecked")
   @Override
   public boolean process(Person person, long time) {
-    if (!person.attributes.containsKey("QALY")) {
-      person.attributes.put("QALY", new LinkedHashMap<Integer, Double>());
-      person.attributes.put("DALY", new LinkedHashMap<Integer, Double>());
-      person.attributes.put("QOL", new LinkedHashMap<Integer, Double>());
+    if (!person.attributes.containsKey(QualityOfLifeModule.QALY)) {
+      person.attributes.put(QALY, new LinkedHashMap<Integer, Double>());
+      person.attributes.put(DALY, new LinkedHashMap<Integer, Double>());
+      person.attributes.put(QOLS, new LinkedHashMap<Integer, Double>());
       // linked hashmaps to preserve insertion order, and then we can iterate by year
     }
 
-    Map<Integer, Double> qalys = (Map<Integer, Double>) person.attributes.get("QALY");
-    Map<Integer, Double> dalys = (Map<Integer, Double>) person.attributes.get("DALY");
-    Map<Integer, Double> qols = (Map<Integer, Double>) person.attributes.get("QOL");
+    Map<Integer, Double> qalys = (Map<Integer, Double>) person.attributes.get(QALY);
+    Map<Integer, Double> dalys = (Map<Integer, Double>) person.attributes.get(DALY);
+    Map<Integer, Double> qols = (Map<Integer, Double>) person.attributes.get(QOLS);
 
     int year = Utilities.getYear(time);
 
@@ -54,7 +59,7 @@ public class QualityOfLifeModule extends Module {
 
       dalys.put(year, values[0]);
       qalys.put(year, values[1]);
-      qols.put(year, values[2]);
+      qols.put(year, 0.5);
       person.attributes.put("most-recent-daly", values[0]);
       person.attributes.put("most-recent-qaly", values[1]);
 
@@ -121,17 +126,52 @@ public class QualityOfLifeModule extends Module {
 
       // TODO - It seems as if this does not get reached as often as it should.
     }
-    // get list of conditions
-    int medicationCount = 0;
-    List<Entry> allConditions = new ArrayList<Entry>();
+
+    // Does not include procedures/medications/etc.
+    // Should track these rather than just the conditions.
+    // Should check all records (split records flag)
+
+    // Get covered Encounter and Conditions.
+    int coveredMedicationCount = 0;
+    int coveredProcedureCount = 0;
+    int coveredImmunizationCount = 0;
+    int coveredEncounterCount = 0;
+    List<Entry> allCoveredConditions = new ArrayList<Entry>();
     for (Encounter encounter : person.record.encounters) {
       for (Entry condition : encounter.conditions) {
-        allConditions.add(condition);
+        allCoveredConditions.add(condition);
       }
-      medicationCount += encounter.medications.size();
+      coveredMedicationCount += encounter.medications.size();
+      coveredProcedureCount += encounter.procedures.size();
+      coveredImmunizationCount += encounter.immunizations.size();
+      coveredEncounterCount++;
+    }
+    // Get uncovered Encounter and Conditions.
+    int uncoveredMedicationCount = 0;
+    int uncoveredProcedureCount = 0;
+    int uncoveredImmunizationCount = 0;
+    int uncoveredEncounterCount = 0;
+    List<Entry> allUncoveredConditions = new ArrayList<Entry>();
+    for (Encounter encounter : person.record.encounters) {
+      for (Entry condition : encounter.conditions) {
+        allUncoveredConditions.add(condition);
+      }
+      uncoveredMedicationCount += encounter.medications.size();
+      uncoveredProcedureCount += encounter.procedures.size();
+      uncoveredImmunizationCount += encounter.immunizations.size();
+      uncoveredEncounterCount++;
     }
 
-    double percentageOfCoveredCare = 1.0; // TODO
+    // NOTE: This percentageOfCoveredCare is based on entire life, not just current year.
+    // Determine the percentage of covered care.
+    int coveredEntries = coveredEncounterCount + coveredMedicationCount + coveredProcedureCount + coveredImmunizationCount;
+    int uncoveredEntries = uncoveredEncounterCount + uncoveredMedicationCount + uncoveredProcedureCount + uncoveredImmunizationCount;
+    double percentageOfCoveredCare = coveredEntries / (coveredEntries + uncoveredEntries);
+
+    // All conditions. May be able to replace this stuff by using the two seperate covered/uncovered conditions lists...
+    allCoveredConditions.addAll(allUncoveredConditions);  // Temp way to get all conditions.
+    List<Entry> allConditions = allCoveredConditions;
+
     double disabilityWeight = 0.0;
     // calculate yld with yearly timestep
     for (int i = 0; i < age + 1; i++) {
@@ -202,9 +242,9 @@ public class QualityOfLifeModule extends Module {
    */
   public static void inventoryAttributes(Map<String, Inventory> attributes) {
     String m = QualityOfLifeModule.class.getSimpleName();
-    Attributes.inventory(attributes, m, "QALY", true, true, "LinkedHashMap<Integer, Double>");
-    Attributes.inventory(attributes, m, "DALY", true, true, "LinkedHashMap<Integer, Double>");
-    Attributes.inventory(attributes, m, "QOL", true, true, "LinkedHashMap<Integer, Double>");
+    Attributes.inventory(attributes, m, QualityOfLifeModule.QALY, true, true, "LinkedHashMap<Integer, Double>");
+    Attributes.inventory(attributes, m, QualityOfLifeModule.DALY, true, true, "LinkedHashMap<Integer, Double>");
+    Attributes.inventory(attributes, m, QualityOfLifeModule.QOLS, true, true, "LinkedHashMap<Integer, Double>");
     Attributes.inventory(attributes, m, Person.BIRTHDATE, true, false, null);
     Attributes.inventory(attributes, m, "most-recent-daly", false, true, "Numeric");
     Attributes.inventory(attributes, m, "most-recent-qaly", false, true, "Numeric");
@@ -234,7 +274,7 @@ public class QualityOfLifeModule extends Module {
     }
 
     /**
-     * Returns a value based on a triangular distribution with high, mediumn, and low points.
+     * Returns a value based on a triangular distribution with high, medium, and low points.
      * 
      * @param position the position along the triangular distribution to return.
      * @return
@@ -246,8 +286,7 @@ public class QualityOfLifeModule extends Module {
       } else {
           return high - Math.sqrt((1 - position) * (high - low) * (high - medium));
       }
-  }
-
+    }
 
     private double parseDouble(String value) {
       if (value == null || value.isEmpty()) {
