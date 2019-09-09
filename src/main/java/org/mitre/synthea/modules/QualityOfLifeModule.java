@@ -220,12 +220,35 @@ public class QualityOfLifeModule extends Module {
       this.medium = parseDouble(values.getOrDefault("MED", "0.0"));
       this.high = parseDouble(values.getOrDefault("HIGH", "0.0"));
     }
+
+    /**
+     * Get the weight of this disability weight based on the percentage of covered care.
+     * Uses a triangular distribution where perecentageOfCoveredCare = 1.0 means all care
+     * was covered and 0 means no care was covered.
+     * 
+     * @param percentageOfCoveredCare
+     * @return
+     */
     public double getWeight(double percentageOfCoveredCare) {
-      // TODO use triangle distribution with low, medium, high
-      // where percentageOfCoveredCare = 1 means all care,
-      // and 0 means no care.
-      return medium;
+      return triangularDistribution(percentageOfCoveredCare);
     }
+
+    /**
+     * Returns a value based on a triangular distribution with high, mediumn, and low points.
+     * 
+     * @param position the position along the triangular distribution to return.
+     * @return
+     */
+    public double triangularDistribution(double position) {
+      double F = (medium - low) / (high - low);
+      if (position < F) {
+          return low + Math.sqrt(position * (high - low) * (medium - low));
+      } else {
+          return high - Math.sqrt((1 - position) * (high - low) * (high - medium));
+      }
+  }
+
+
     private double parseDouble(String value) {
       if (value == null || value.isEmpty()) {
         return 0.0;
