@@ -59,7 +59,7 @@ public class QualityOfLifeModule extends Module {
 
       dalys.put(year, values[0]);
       qalys.put(year, values[1]);
-      qols.put(year, 0.5);
+      qols.put(year, values[2]);
       person.attributes.put("most-recent-daly", values[0]);
       person.attributes.put("most-recent-qaly", values[1]);
 
@@ -137,7 +137,7 @@ public class QualityOfLifeModule extends Module {
     int coveredImmunizationCount = 0;
     int coveredEncounterCount = 0;
     List<Entry> allCoveredConditions = new ArrayList<Entry>();
-    for (Encounter encounter : person.record.encounters) {
+    for (Encounter encounter : person.coveredHealthRecord.encounters) {
       for (Entry condition : encounter.conditions) {
         allCoveredConditions.add(condition);
       }
@@ -152,7 +152,7 @@ public class QualityOfLifeModule extends Module {
     int uncoveredImmunizationCount = 0;
     int uncoveredEncounterCount = 0;
     List<Entry> allUncoveredConditions = new ArrayList<Entry>();
-    for (Encounter encounter : person.record.encounters) {
+    for (Encounter encounter : person.uncoveredHealthRecord.encounters) {
       for (Entry condition : encounter.conditions) {
         allUncoveredConditions.add(condition);
       }
@@ -182,7 +182,7 @@ public class QualityOfLifeModule extends Module {
       disabilityWeight = 0.0;
 
       for (Entry condition : conditionsInYear) {
-        disabilityWeight += 
+          disabilityWeight += 
           (double) disabilityWeights.get(condition.codes.get(0).code)
             .getWeight(percentageOfCoveredCare);
       }

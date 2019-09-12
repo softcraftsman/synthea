@@ -219,7 +219,7 @@ public class CSVExporter {
         + "COVERED_IMMUNIZATIONS,UNCOVERED_IMMUNIZATIONS,"
         + "UNIQUE_CUSTOMERS,QOLS_AVG,MEMBER_MONTHS");
     payers.write(NEWLINE);
-    payerTransitions.write("PATIENT,START_YEAR,END_YEAR,PAYER,OWNERSHIP");
+    payerTransitions.write("PATIENT,START_YEAR,END_YEAR,PAYER,OWNERSHIP,QOLS_FOR_YEAR");
     payerTransitions.write(NEWLINE);
   }
 
@@ -296,6 +296,9 @@ public class CSVExporter {
    */
   private void exportPayerTransitions(Person person, long stopTime) throws IOException {
 
+    // Boolean to determine if range or all years are exported.
+    boolean range = false;
+
     // The current year starts with the year of the person's birth.
     int currentYear = Utilities.getYear((long) person.attributes.get(Person.BIRTHDATE));
 
@@ -303,24 +306,37 @@ public class CSVExporter {
     String previousOwnership = "Guardian";
     int startYear = currentYear;
 
-    for (int personAge = 0; personAge < 128; personAge++) {
-      Payer currentPayer = person.getPayerAtAge(personAge);
-      String currentOwnership = person.getPayerOwnershipAtAge(personAge);
-      if (currentPayer == null) {
-        return;
+    if (range) {
+      for (int personAge = 0; personAge < 128; personAge++) {
+        Payer currentPayer = person.getPayerAtAge(personAge);
+        String currentOwnership = person.getPayerOwnershipAtAge(personAge);
+        if (currentPayer == null) {
+          return;
+        }
+        // Only write a new line if these conditions are met to export for year ranges of payers.
+        if (!currentPayer.getResourceID().equals(previousPayerID)
+            || !currentOwnership.equals(previousOwnership)
+            || Utilities.convertCalendarYearsToTime(currentYear) >= stopTime
+            || !person.alive(Utilities.convertCalendarYearsToTime(currentYear + 1))) {
+          payerTransition(person, currentPayer, startYear, currentYear);
+          previousPayerID = currentPayer.getResourceID();
+          previousOwnership = currentOwnership;
+          startYear = currentYear + 1;
+          payerTransitions.flush();
+        }
+        currentYear++;
       }
-      // Only write a new line if these conditions are met to export for year ranges of payers.
-      if (!currentPayer.getResourceID().equals(previousPayerID)
-          || !currentOwnership.equals(previousOwnership)
-          || Utilities.convertCalendarYearsToTime(currentYear) >= stopTime
-          || !person.alive(Utilities.convertCalendarYearsToTime(currentYear + 1))) {
-        payerTransition(person, currentPayer, startYear, currentYear);
-        previousPayerID = currentPayer.getResourceID();
-        previousOwnership = currentOwnership;
-        startYear = currentYear + 1;
+    } else {
+      for(int personAge = 0; personAge < 128; personAge++) {
+        Payer payer = person.getPayerAtAge(personAge);
+        if (payer == null) {
+          // Payer array is 128 long even though it will only be filled up to person's age.
+          break;
+        }
+        payerTransition(person, payer, currentYear, personAge);
+        currentYear++;
         payerTransitions.flush();
       }
-      currentYear++;
     }
   }
 
@@ -1005,7 +1021,7 @@ public class CSVExporter {
    */
   private void payerTransition(Person person, Payer payer, int startYear, int endYear)
       throws IOException {
-    // PATIENT_ID,START_YEAR,END_YEAR,PAYER_ID,OWNERSHIP
+    // PATIENT_ID,START_YEAR,END_YEAR,PAYER_ID,OWNERSHIP,QOLS_FOR_YEAR
 
     StringBuilder s = new StringBuilder();
     // PATIENT_ID
@@ -1017,7 +1033,11 @@ public class CSVExporter {
     // PAYER_ID
     s.append(payer.getResourceID()).append(',');
     // OWNERSHIP
-    s.append(person.getPayerOwnershipAtTime(Utilities.convertCalendarYearsToTime(startYear)));
+    s.append(person.getPayerOwnershipAtTime(Utilities.convertCalendarYearsToTime(startYear))).append(',');
+    // QOLS
+    double QOLS = ((Map<Integer, Double>) person.attributes.get(QualityOfLifeModule.QOLS)).get(startYear);
+    s.append(QOLS);
+
     s.append(NEWLINE);
     write(s.toString(), payerTransitions);
   }

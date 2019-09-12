@@ -61,6 +61,8 @@ public abstract class Logic {
         break;
       }
     }
+
+
     return entry;
   }
 
@@ -205,7 +207,16 @@ public abstract class Logic {
       if (this.codes != null) {
         for (Code code : this.codes) {
           // First, look in the current health record for the latest observation
+          // person.record = person.getHealthRecord(null, time);
           HealthRecord.Observation last = person.record.getLatestObservation(code.code);
+          // If the observation is not in the current record, it could be in the uncovered health record.
+          if (last == null) {
+            last = person.uncoveredHealthRecord.getLatestObservation(code.code);
+          }
+          // If the observation still is not in the uncovered health record, it could be in the covered health record.
+          if (last == null) {
+            last = person.coveredHealthRecord.getLatestObservation(code.code);
+          }
           if (last == null && person.hasMultipleRecords) {
             // If the latest observation is not in the current health record,
             // then look in the module history.
@@ -237,6 +248,9 @@ public abstract class Logic {
       } else if (operator.equals("is not nil")) {
         return observation != null;
       } else if (observation == null) {
+        System.out.println(codes.get(0).display);
+        System.out.println(this.operator);
+        System.out.println(this.valueCode.code);
         throw new NullPointerException("Required observation is null.");
       } else {
         return Utilities.compare(observation.value, this.value, operator);

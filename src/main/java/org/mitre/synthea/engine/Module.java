@@ -51,11 +51,10 @@ public class Module {
     Map<String, ModuleSupplier> retVal = new ConcurrentHashMap<>();
     AtomicInteger submoduleCount = new AtomicInteger();
 
-    retVal.put("Lifecycle", new ModuleSupplier(new LifecycleModule()));
-    //retVal.put("Health Insurance", new ModuleSupplier(new HealthInsuranceModule()));
-    retVal.put("Cardiovascular Disease", new ModuleSupplier(new CardiovascularDiseaseModule()));
+    // retVal.put("Lifecycle", new ModuleSupplier(new LifecycleModule()));
+    // retVal.put("Cardiovascular Disease", new ModuleSupplier(new CardiovascularDiseaseModule()));
     retVal.put("Quality Of Life", new ModuleSupplier(new QualityOfLifeModule()));
-    retVal.put("Weight Loss", new ModuleSupplier(new WeightLossModule()));
+    // retVal.put("Weight Loss", new ModuleSupplier(new WeightLossModule()));
 
     try {
       URI modulesURI = ClassLoader.getSystemClassLoader().getResource("modules").toURI();
