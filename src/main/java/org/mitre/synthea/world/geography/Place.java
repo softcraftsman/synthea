@@ -1,5 +1,6 @@
 package org.mitre.synthea.world.geography;
 
+import java.io.Serializable;
 import java.util.Map;
 
 import org.apache.sis.geometry.DirectPosition2D;
@@ -8,7 +9,7 @@ import org.apache.sis.index.tree.QuadTreeData;
 /**
  * Place represents a named place with a postal code and coordinate.
  */
-public class Place implements QuadTreeData {
+public class Place implements QuadTreeData, Serializable {
   /** The name of the state. For example, Ohio */
   public String state;
   /** The state abbreviation. For example, OH */

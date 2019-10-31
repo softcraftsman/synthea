@@ -6,6 +6,7 @@ import com.google.gson.JsonParser;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.URI;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
@@ -42,7 +43,7 @@ import org.mitre.synthea.world.agents.Person;
  * across the population, it is important that States are cloned before they are executed. 
  * This keeps the "master" copy of the module clean.
  */
-public class Module {
+public class Module implements Serializable {
 
   private static final Map<String, ModuleSupplier> modules = loadModules();
   

@@ -5,6 +5,7 @@ import com.google.common.collect.Table;
 import com.google.gson.internal.LinkedTreeMap;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -32,7 +33,7 @@ import org.mitre.synthea.world.concepts.HealthRecord.EncounterType;
 import org.mitre.synthea.world.geography.Demographics;
 import org.mitre.synthea.world.geography.Location;
 
-public class Provider implements QuadTreeData {
+public class Provider implements QuadTreeData, Serializable {
 
   public static final String ENCOUNTERS = "encounters";
   public static final String PROCEDURES = "procedures";
@@ -75,7 +76,7 @@ public class Provider implements QuadTreeData {
   public ArrayList<EncounterType> servicesProvided;
   public Map<String, ArrayList<Clinician>> clinicianMap;
   // row: year, column: type, value: count
-  private Table<Integer, String, AtomicInteger> utilization;
+  private transient Table<Integer, String, AtomicInteger> utilization;
 
   /**
    * Create a new Provider with no information.

@@ -19,7 +19,7 @@ public class GeneratorTest {
     TestHelper.exportOff();
     Config.set("generate.only_dead_patients", "false");
   }
-
+  
   @Test
   public void testGeneratorCreatesPeople() throws Exception {
     int numberOfPeople = 1;
@@ -179,30 +179,30 @@ public class GeneratorTest {
       public void run() {
         generator.run();
       }
-  };
-  generateThread.start();
-  
-  int count = 0;
-  while(generateThread.isAlive()) {
-    ero.getNextRecord();
-    ++count;
-    
-    if (count == numberOfPeople) {
-      // Break out if we have gotten enough records.
-      break;
-    }
-  }
-  
-  if (count < numberOfPeople) {
-    // Generator thread terminated but we have not gotten enough records yet. Check queue.
-    if(!ero.isRecordQueueEmpty()) {      
+    };
+    generateThread.start();
+
+    int count = 0;
+    while(generateThread.isAlive()) {
       ero.getNextRecord();
       ++count;
-    }
-  }
-  
-  assertEquals(numberOfPeople, count);
 
-  generateThread.interrupt();
+      if (count == numberOfPeople) {
+        // Break out if we have gotten enough records.
+        break;
+      }
+    }
+
+    if (count < numberOfPeople) {
+      // Generator thread terminated but we have not gotten enough records yet. Check queue.
+      if(!ero.isRecordQueueEmpty()) {      
+        ero.getNextRecord();
+        ++count;
+      }
+    }
+
+    assertEquals(numberOfPeople, count);
+
+    generateThread.interrupt();
   }
 }

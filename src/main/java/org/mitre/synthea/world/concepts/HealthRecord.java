@@ -2,6 +2,7 @@ package org.mitre.synthea.world.concepts;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import java.io.Serializable;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -27,7 +28,7 @@ import org.mitre.synthea.world.agents.Provider;
  * class represents a logical health record. Exporters will convert this health
  * record into various standardized formats.
  */
-public class HealthRecord {
+public class HealthRecord implements Serializable {
 
   public static final String ENCOUNTERS = "encounters";
   public static final String PROCEDURES = "procedures";
@@ -37,7 +38,7 @@ public class HealthRecord {
   /**
    * HealthRecord.Code represents a system, code, and display value.
    */
-  public static class Code implements Comparable<Code> {
+  public static class Code implements Comparable<Code>, Serializable {
     /** Code System (e.g. LOINC, RxNorm, SNOMED) identifier (typically a URI) */
     public String system;
     /** The code itself. */
@@ -101,7 +102,7 @@ public class HealthRecord {
    * Observations, Reports, Medications, etc. All Entries have a name, start and
    * stop times, a type, and a list of associated codes.
    */
-  public class Entry {
+  public class Entry implements Serializable {
     /** reference to the HealthRecord this entry belongs to. */
     HealthRecord record = HealthRecord.this;
     public String fullUrl;
@@ -180,7 +181,7 @@ public class HealthRecord {
   public class Medication extends Entry {
     public List<Code> reasons;
     public Code stopReason;
-    public JsonObject prescriptionDetails;
+    public transient JsonObject prescriptionDetails;
     public Claim claim;
     public boolean administration;
     public boolean chronic;
@@ -225,7 +226,7 @@ public class HealthRecord {
   public class CarePlan extends Entry {
     public Set<Code> activities;
     public List<Code> reasons;
-    public Set<JsonObject> goals;
+    public transient Set<JsonObject> goals;
     public Code stopReason;
 
     /**
@@ -256,7 +257,7 @@ public class HealthRecord {
      * ImagingStudy.Series represents a series of images that were taken of a
      * specific part of the body.
      */
-    public class Series implements Cloneable {
+    public class Series implements Cloneable, Serializable {
       /** A randomly assigned DICOM UID. */
       public transient String dicomUid;
       /** A SNOMED-CT body structures code. */
@@ -293,9 +294,9 @@ public class HealthRecord {
      * ImagingStudy.Instance represents a single imaging Instance taken as part of a
      * Series of images.
      */
-    public class Instance implements Cloneable {
+    public class Instance implements Cloneable, Serializable {
       /** A randomly assigned DICOM UID. */
-      public transient String dicomUid;
+      public String dicomUid;
       /** A title for this image. */
       public String title;
       /**
