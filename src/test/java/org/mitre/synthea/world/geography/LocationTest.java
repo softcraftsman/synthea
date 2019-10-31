@@ -133,43 +133,43 @@ public class LocationTest {
   public void testGetForeignPlaceOfBirth_ValidStringInvalidFormat_1() {
     Random random = new Random(0L);
     String[] placeOfBirth = location.randomBirthplaceByEthnicity(random, "too_many_elements");
-    Assert.assertEquals("Expected to receive 'Stoughton'", "Stoughton", placeOfBirth[0]);
+    Assert.assertEquals("Expected to receive 'Cambridge'", "Cambridge", placeOfBirth[0]);
     Assert.assertEquals("Expected to receive 'Massachusetts'", "Massachusetts", placeOfBirth[1]);
     Assert.assertEquals("Expected to receive 'US'", "US", placeOfBirth[2]);
-    Assert.assertEquals("Expected to recieve 'Stoughton, Massachusetts, US'",
-        "Stoughton, Massachusetts, US", placeOfBirth[3]);
+    Assert.assertEquals("Expected to recieve 'Cambridge, Massachusetts, US'",
+        "Cambridge, Massachusetts, US", placeOfBirth[3]);
   }
 
   @Test
   public void testGetForeignPlaceOfBirth_ValidStringInvalidFormat_2() {
     Random random = new Random(0L);
     String[] placeOfBirth = location.randomBirthplaceByEthnicity(random, "not_enough_elements");
-    Assert.assertEquals("Expected to receive 'Stoughton'", "Stoughton", placeOfBirth[0]);
+    Assert.assertEquals("Expected to receive 'Cambridge'", "Cambridge", placeOfBirth[0]);
     Assert.assertEquals("Expected to receive 'Massachusetts'", "Massachusetts", placeOfBirth[1]);
     Assert.assertEquals("Expected to receive 'US'", "US", placeOfBirth[2]);
-    Assert.assertEquals("Expected to recieve 'Stoughton, Massachusetts, US'",
-        "Stoughton, Massachusetts, US", placeOfBirth[3]);
+    Assert.assertEquals("Expected to recieve 'Cambridge, Massachusetts, US'",
+        "Cambridge, Massachusetts, US", placeOfBirth[3]);
   }
 
   @Test
   public void testGetForeignPlaceOfBirth_MissingValue() {
     Random random = new Random(0L);
     String[] placeOfBirth = location.randomBirthplaceByEthnicity(random, "unknown_ethnicity");
-    Assert.assertEquals("Expected to receive 'Rehoboth'", "Rehoboth", placeOfBirth[0]);
+    Assert.assertEquals("Expected to receive 'Somerville'", "Somerville", placeOfBirth[0]);
     Assert.assertEquals("Expected to receive 'Massachusetts'", "Massachusetts", placeOfBirth[1]);
     Assert.assertEquals("Expected to receive 'US'", "US", placeOfBirth[2]);
-    Assert.assertEquals("Expected to recieve 'Rehoboth, Massachusetts, US'",
-        "Rehoboth, Massachusetts, US", placeOfBirth[3]);
+    Assert.assertEquals("Expected to recieve 'Somerville, Massachusetts, US'",
+        "Somerville, Massachusetts, US", placeOfBirth[3]);
   }
 
   @Test
   public void testGetForeignPlaceOfBirth_EmptyValue() {
     Random random = new Random(0L);
     String[] placeOfBirth = location.randomBirthplaceByEthnicity(random, "empty_ethnicity");
-    Assert.assertEquals("Expected to receive 'Rehoboth'", "Rehoboth", placeOfBirth[0]);
+    Assert.assertEquals("Expected to receive 'Somerville'", "Somerville", placeOfBirth[0]);
     Assert.assertEquals("Expected to receive 'Massachusetts'", "Massachusetts", placeOfBirth[1]);
     Assert.assertEquals("Expected to receive 'US'", "US", placeOfBirth[2]);
-    Assert.assertEquals("Expected to recieve 'Rehoboth, Massachusetts, US'",
-        "Rehoboth, Massachusetts, US", placeOfBirth[3]);
+    Assert.assertEquals("Expected to recieve 'Somerville, Massachusetts, US'",
+        "Somerville, Massachusetts, US", placeOfBirth[3]);
   }
 }

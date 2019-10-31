@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import java.io.Serializable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -65,8 +66,12 @@ public class Location implements Serializable {
       long runningPopulation = 0;
       // linked to ensure consistent iteration order
       populationByCity = new LinkedHashMap<>();
-      populationByCityId = new LinkedHashMap<>();      
-      for (Demographics d : this.demographics.values()) {
+      populationByCityId = new LinkedHashMap<>();
+      // sort the demographics to ensure tests pass regardless of implementing class
+      // for this.demographics, see comment above on non-serializability of Google Table.row
+      ArrayList<Demographics> sortedDemographics = new ArrayList(this.demographics.values());
+      Collections.sort(sortedDemographics);
+      for (Demographics d : sortedDemographics) {
         long pop = d.population;
         runningPopulation += pop;
         if (populationByCity.containsKey(d.city)) {
