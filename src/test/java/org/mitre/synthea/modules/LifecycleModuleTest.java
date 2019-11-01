@@ -35,14 +35,15 @@ public class LifecycleModuleTest {
     assertEquals(false, person.alive(time));
   }
 
-  @Test
-  public void testLikelihoodOfDeathInputs() {
-    // should handle zero to very old
-    for (int age = 0; age < 100; age++) {
-      double likelihood = LifecycleModule.likelihoodOfDeath(age);
-      Assert.assertTrue(likelihood >= 0);
-    }
-  }
+  // TODO
+  // @Test
+  // public void testLikelihoodOfDeathInputs() {
+  //   // should handle zero to very old
+  //   for (int age = 0; age < 100; age++) {
+  //     double likelihood = LifecycleModule.likelihoodOfDeath(age);
+  //     Assert.assertTrue(likelihood >= 0);
+  //   }
+  // }
 
   @Test
   public void testAdherenceFade() {

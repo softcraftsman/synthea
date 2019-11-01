@@ -270,7 +270,7 @@ public class QualityOfLifeModule extends Module {
      * @return
      */
     public double getWeight(double percentageOfCoveredCare) {
-      return triangularDistribution(percentageOfCoveredCare);
+      return triangularDistribution(0.0);
     }
 
     /**

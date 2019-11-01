@@ -196,6 +196,7 @@ public abstract class State implements Cloneable {
   public static class Simple extends State {
     @Override
     public boolean process(Person person, long time) {
+      // System.out.println("Test for: " + person.attributes.get(Person.NAME) + " " + this.name);
       return true;
     }
   }
@@ -1386,6 +1387,7 @@ public abstract class State implements Cloneable {
 
     @Override
     public boolean process(Person person, long time) {
+
       Code reason = null;
       if (codes != null) {
         reason = codes.get(0);

@@ -32,10 +32,12 @@
             "gender": "M"
           }
         }
-      ]
+      ],
+      "name": "Initial"
     },
     "Terminal": {
-      "type": "Terminal"
+      "type": "Terminal",
+      "name": "Terminal"
     },
     "Female": {
       "type": "Simple",
@@ -57,100 +59,8 @@
         "For an American woman, the lifetime risk of developing breast cancer is 12.38% or 1 in 8[4]:",
         "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4127601/pdf/WJCO-5-283.pdf"
       ],
-      "complex_transition": [
-        {
-          "condition": {
-            "condition_type": "Race",
-            "race": "White"
-          },
-          "distributions": [
-            {
-              "transition": "Pre_breastCancer",
-              "distribution": 1.0
-            },
-            {
-              "transition": "Terminal",
-              "distribution": 0.0
-            }
-          ]
-        },
-        {
-          "distributions": [
-            {
-              "transition": "Pre_breastCancer",
-              "distribution": 1.0
-            },
-            {
-              "transition": "Terminal",
-              "distribution": 0.0
-            }
-          ],
-          "condition": {
-            "condition_type": "Race",
-            "race": "Black"
-          }
-        },
-        {
-          "distributions": [
-            {
-              "transition": "Pre_breastCancer",
-              "distribution": 1.0
-            },
-            {
-              "transition": "Terminal",
-              "distribution": 0.0
-            }
-          ],
-          "condition": {
-            "condition_type": "Race",
-            "race": "Asian"
-          }
-        },
-        {
-          "distributions": [
-            {
-              "transition": "Pre_breastCancer",
-              "distribution": 1.0
-            },
-            {
-              "transition": "Terminal",
-              "distribution": 0.0
-            }
-          ],
-          "condition": {
-            "condition_type": "Race",
-            "race": "Hispanic"
-          }
-        },
-        {
-          "distributions": [
-            {
-              "transition": "Pre_breastCancer",
-              "distribution": 1.0
-            },
-            {
-              "transition": "Terminal",
-              "distribution": 0.0
-            }
-          ],
-          "condition": {
-            "condition_type": "Race",
-            "race": "Native"
-          }
-        },
-        {
-          "distributions": [
-            {
-              "transition": "Pre_breastCancer",
-              "distribution": 1.0
-            },
-            {
-              "transition": "Terminal",
-              "distribution": 0.0
-            }
-          ]
-        }
-      ]
+      "name": "Female",
+      "direct_transition": "Pre_breastCancer"
     },
     "Male": {
       "type": "Simple",
@@ -173,7 +83,8 @@
           "transition": "Age 60-69",
           "distribution": 0.001
         }
-      ]
+      ],
+      "name": "Male"
     },
     "Pre_breastCancer": {
       "type": "Simple",
@@ -192,17 +103,14 @@
         },
         {
           "transition": "Age 69-85",
-          "distribution": 0.2591
-        },
-        {
-          "transition": "Age 85-140",
-          "distribution": 0.0526
+          "distribution": 0.3117
         }
       ],
       "remarks": [
         "https://gis.cdc.gov/Cancer/USCS/DataViz.html",
         "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4127601/pdf/WJCO-5-283.pdf"
-      ]
+      ],
+      "name": "Pre_breastCancer"
     },
     "BreastCancer_Symptom1": {
       "type": "Symptom",
@@ -217,7 +125,8 @@
       "range": {
         "low": 0,
         "high": 5
-      }
+      },
+      "name": "BreastCancer_Symptom1"
     },
     "BreastCancer_Symptom2": {
       "type": "Symptom",
@@ -232,7 +141,8 @@
       "range": {
         "low": 20,
         "high": 30
-      }
+      },
+      "name": "BreastCancer_Symptom2"
     },
     "BreastCancer_Symptom4": {
       "type": "Symptom",
@@ -247,7 +157,8 @@
       "range": {
         "low": 20,
         "high": 60
-      }
+      },
+      "name": "BreastCancer_Symptom4"
     },
     "BreastCancer_Symptom3": {
       "type": "Symptom",
@@ -262,7 +173,8 @@
       "range": {
         "low": 0,
         "high": 35
-      }
+      },
+      "name": "BreastCancer_Symptom3"
     },
     "BreastCancer_Symptom5": {
       "type": "Symptom",
@@ -276,7 +188,8 @@
       "range": {
         "low": 0,
         "high": 10
-      }
+      },
+      "name": "BreastCancer_Symptom5"
     },
     "BreastCancer_Symptom6": {
       "type": "Symptom",
@@ -290,7 +203,8 @@
       "range": {
         "low": 0,
         "high": 5
-      }
+      },
+      "name": "BreastCancer_Symptom6"
     },
     "Breast Cancer": {
       "type": "ConditionOnset",
@@ -303,7 +217,8 @@
       ],
       "direct_transition": "Time Before Initial Doctor Visit",
       "target_encounter": "Breast Cancer Encounter",
-      "assign_to_attribute": "breast_cancer_condition"
+      "assign_to_attribute": "breast_cancer_condition",
+      "name": "Breast Cancer"
     },
     "Mammogram": {
       "type": "Procedure",
@@ -335,7 +250,8 @@
         "https://www.nationalbreastcancer.org/breast-cancer-diagnosis",
         "",
         "https://www.breastcancer.org/research-news/20091204b"
-      ]
+      ],
+      "name": "Mammogram"
     },
     "Ultrasound": {
       "type": "Procedure",
@@ -356,7 +272,8 @@
         "Ultrasound",
         "A breast ultrasound is a scan that uses penetrating sound waves that do not affect or damage the tissue and cannot be heard by humans.",
         "https://www.nationalbreastcancer.org/breast-cancer-diagnosis"
-      ]
+      ],
+      "name": "Ultrasound"
     },
     "Breast Cancer Encounter": {
       "type": "Encounter",
@@ -368,7 +285,8 @@
           "display": "Encounter for symptom (procedure)"
         }
       ],
-      "direct_transition": "Mammogram"
+      "direct_transition": "Mammogram",
+      "name": "Breast Cancer Encounter"
     },
     "MRI": {
       "type": "Procedure",
@@ -389,17 +307,20 @@
         "MRI",
         "During a breast MRI, a magnet connected to a computer transmits magnetic energy and radio waves (not radiation) through the breast tissue. It scans the tissue, making detailed pictures of areas within the breast.",
         "https://www.nationalbreastcancer.org/breast-cancer-diagnosis"
-      ]
+      ],
+      "name": "MRI"
     },
     "Diagnose_TNM_Markers": {
       "type": "CallSubmodule",
       "submodule": "breast_cancer/tnm_diagnosis",
-      "direct_transition": "Diagnose Hormone Receptors"
+      "direct_transition": "Diagnose Hormone Receptors",
+      "name": "Diagnose_TNM_Markers"
     },
     "Diagnose Hormone Receptors": {
       "type": "CallSubmodule",
       "submodule": "breast_cancer/hormone_diagnosis",
-      "direct_transition": "Staging"
+      "direct_transition": "Staging",
+      "name": "Diagnose Hormone Receptors"
     },
     "Staging": {
       "type": "Simple",
@@ -425,7 +346,8 @@
       ],
       "remarks": [
         "AJCC Cancer Staging Manual; 8th Edition"
-      ]
+      ],
+      "name": "Staging"
     },
     "Stage IV": {
       "type": "Observation",
@@ -438,12 +360,13 @@
           "display": "Stage group.clinical Cancer"
         }
       ],
-      "direct_transition": "Delay for Analysis of Possible Treatments",
+      "direct_transition": "Set Stage IV",
       "value_code": {
         "system": "SNOMED-CT",
         "code": 258228008,
         "display": "Stage 4 (qualifier value)"
-      }
+      },
+      "name": "Stage IV"
     },
     "Nonmetastatic": {
       "type": "Simple",
@@ -500,7 +423,8 @@
         {
           "transition": "Nonaggressive"
         }
-      ]
+      ],
+      "name": "Nonmetastatic"
     },
     "Stage IV Treatment": {
       "type": "Simple",
@@ -521,7 +445,8 @@
         "Stage 3: Relative survival rate of 72 percent. Many women with this stage breast cancer are treated successfully.",
         "Stage 4: Relative survival rate of 22 percent. Many different treatment options are available:",
         "https://www.medicalnewstoday.com/articles/316867.php"
-      ]
+      ],
+      "name": "Stage IV Treatment"
     },
     "Stage III": {
       "type": "Observation",
@@ -539,6 +464,7 @@
         "code": 258224005,
         "display": "Stage 3 (qualifier value)"
       },
+      "name": "Stage III",
       "direct_transition": "Delay for Analysis of Possible Treatments"
     },
     "Stage I": {
@@ -557,7 +483,8 @@
         "code": 258215001,
         "display": "Stage 1 (qualifier value)"
       },
-      "direct_transition": "Delay for Analysis of Possible Treatments"
+      "direct_transition": "Delay for Analysis of Possible Treatments",
+      "name": "Stage I"
     },
     "IIIB": {
       "type": "Observation",
@@ -570,12 +497,13 @@
           "display": "Stage group.clinical Cancer"
         }
       ],
-      "direct_transition": "Stage III",
+      "direct_transition": "Set Stage IIIB",
       "value_code": {
         "system": "SNOMED-CT",
         "code": 261639007,
         "display": "Stage 3B (qualifier value)"
-      }
+      },
+      "name": "IIIB"
     },
     "IIIA": {
       "type": "Observation",
@@ -593,7 +521,8 @@
         "code": 261638004,
         "display": "Stage 3A (qualifier value)"
       },
-      "direct_transition": "Stage III"
+      "direct_transition": "Set Stage IIIA",
+      "name": "IIIA"
     },
     "Stage III Treatment": {
       "type": "Simple",
@@ -614,7 +543,8 @@
         "Stage 3: Relative survival rate of 72 percent. Many women with this stage breast cancer are treated successfully.",
         "Stage 4: Relative survival rate of 22 percent. Many different treatment options are available:",
         "https://www.medicalnewstoday.com/articles/316867.php"
-      ]
+      ],
+      "name": "Stage III Treatment"
     },
     "Nonaggressive": {
       "type": "Simple",
@@ -709,7 +639,8 @@
       ],
       "remarks": [
         "AJCC Cancer Staging Manual; 8th Edition"
-      ]
+      ],
+      "name": "Nonaggressive"
     },
     "IIIC": {
       "type": "Observation",
@@ -727,7 +658,8 @@
         "code": 261640009,
         "display": "Stage 3C (qualifier value)"
       },
-      "direct_transition": "Stage III"
+      "direct_transition": "Set Stage IIIC",
+      "name": "IIIC"
     },
     "IIB": {
       "type": "Observation",
@@ -745,7 +677,8 @@
         "code": 261615002,
         "display": "Stage 2B (qualifier value)"
       },
-      "direct_transition": "Stage II"
+      "direct_transition": "Set Stage IIB",
+      "name": "IIB"
     },
     "IIA": {
       "type": "Observation",
@@ -763,7 +696,8 @@
         "code": 261614003,
         "display": "Stage 2A (qualifier value)"
       },
-      "direct_transition": "Stage II"
+      "direct_transition": "Set Stage IIA",
+      "name": "IIA"
     },
     "IA": {
       "type": "Observation",
@@ -781,7 +715,8 @@
         "code": 261634002,
         "display": "Stage 1A (qualifier value)"
       },
-      "direct_transition": "Stage I"
+      "direct_transition": "Set Stage IA",
+      "name": "IA"
     },
     "IB": {
       "type": "Observation",
@@ -799,7 +734,8 @@
         "code": 261635001,
         "display": "Stage 1B (qualifier value)"
       },
-      "direct_transition": "Stage I"
+      "direct_transition": "Set Stage IB",
+      "name": "IB"
     },
     "Early_Stage": {
       "type": "Simple",
@@ -825,7 +761,8 @@
       ],
       "remarks": [
         "AJCC Cancer Staging Manual; 8th Edition"
-      ]
+      ],
+      "name": "Early_Stage"
     },
     "Stage II": {
       "type": "Observation",
@@ -843,6 +780,7 @@
         "code": 258219007,
         "display": "Stage 2 (qualifier value)"
       },
+      "name": "Stage II",
       "direct_transition": "Delay for Analysis of Possible Treatments"
     },
     "Stage II Treatment": {
@@ -864,11 +802,13 @@
         "Stage 3: Relative survival rate of 72 percent. Many women with this stage breast cancer are treated successfully.",
         "Stage 4: Relative survival rate of 22 percent. Many different treatment options are available:",
         "https://www.medicalnewstoday.com/articles/316867.php"
-      ]
+      ],
+      "name": "Stage II Treatment"
     },
     "End Initial Follow-Up Doctor Visit": {
       "type": "EncounterEnd",
-      "direct_transition": "Initial Follow-Up Counter"
+      "direct_transition": "Initial Follow-Up Counter",
+      "name": "End Initial Follow-Up Doctor Visit"
     },
     "4 Months between Initial Follow-Ups": {
       "type": "Delay",
@@ -881,7 +821,8 @@
       "remarks": [
         "Doctor visits: At first, your follow-up doctor visits will probably be scheduled for every few months. The longer you have been free of cancer, the less often the appointments are needed. After 5 years, they are typically done about once a year:",
         "https://www.cancer.org/cancer/breast-cancer/living-as-a-breast-cancer-survivor/follow-up-care-after-breast-cancer-treatment.html"
-      ]
+      ],
+      "name": "4 Months between Initial Follow-Ups"
     },
     "Initial Follow-Up Counter": {
       "type": "Counter",
@@ -914,7 +855,8 @@
       ],
       "remarks": [
         "1 unit of the counter indicates 4 months. Patients within 5 years of surgery will typically go to the doctors about every 4 months."
-      ]
+      ],
+      "name": "Initial Follow-Up Counter"
     },
     "Initialize Initial Follow-Up Counter": {
       "type": "SetAttribute",
@@ -923,7 +865,8 @@
       "value": 0,
       "remarks": [
         "1 unit of the counter indicates 4 months. Patients within 5 years of surgery will typically go to the doctors about every 4 months."
-      ]
+      ],
+      "name": "Initialize Initial Follow-Up Counter"
     },
     "Mammogram Followup": {
       "type": "Simple",
@@ -954,7 +897,8 @@
       "remarks": [
         "Mammograms: If you had breast-conserving surgery, you will get a mammogram about 6-12 months after surgery and radiation are completed, and then at least every year after that. Depending on the type of mastectomy you had, you may still need to have yearly mammograms on the remaining breast:",
         "https://www.cancer.org/cancer/breast-cancer/living-as-a-breast-cancer-survivor/follow-up-care-after-breast-cancer-treatment.html"
-      ]
+      ],
+      "name": "Mammogram Followup"
     },
     "Post-Surgery Mammogram": {
       "type": "Procedure",
@@ -977,7 +921,8 @@
         "A mammogram is an x-ray that allows a qualified specialist to examine the breast tissue for any suspicious areas.  In a diagnostic mammogram, more x-rays are taken, providing views of the breast from multiple vantage points.",
         "https://www.nationalbreastcancer.org/breast-cancer-diagnosis:",
         "https://www.breastcancer.org/research-news/20091204b"
-      ]
+      ],
+      "name": "Post-Surgery Mammogram"
     },
     "Mammogram Followup Visit": {
       "type": "Encounter",
@@ -990,11 +935,13 @@
           "display": "Screening surveillance (regime/therapy)"
         }
       ],
-      "encounter_class": "inpatient"
+      "encounter_class": "inpatient",
+      "name": "Mammogram Followup Visit"
     },
     "End Mammogram Followup Visit": {
       "type": "EncounterEnd",
-      "direct_transition": "Pelvic Followup"
+      "direct_transition": "Pelvic Followup",
+      "name": "End Mammogram Followup Visit"
     },
     "Pelvic Followup": {
       "type": "Simple",
@@ -1054,7 +1001,8 @@
         "https://www.cancer.org/cancer/breast-cancer/living-as-a-breast-cancer-survivor/follow-up-care-after-breast-cancer-treatment.html",
         "",
         "https://www.hopkinsmedicine.org/kimmel_cancer_center/centers/breast_cancer_program/treatment_and_services/survivorship/follow_up/pelvic_exams.html"
-      ]
+      ],
+      "name": "Pelvic Followup"
     },
     "Gynecologist Visit": {
       "type": "Encounter",
@@ -1067,7 +1015,8 @@
           "display": "Gynecology service (qualifier value)"
         }
       ],
-      "direct_transition": "Pelvic Exam"
+      "direct_transition": "Pelvic Exam",
+      "name": "Gynecologist Visit"
     },
     "Bone Followup": {
       "type": "Simple",
@@ -1140,11 +1089,13 @@
       "remarks": [
         "Bone density tests: If you are taking an aromatase inhibitor (anastrozole, letrozole, or exemestane) for early stage breast cancer, or if you go through menopause as a result of treatment, your doctor will want to monitor your bone health and may consider testing your bone density.",
         "https://www.cancer.org/cancer/breast-cancer/living-as-a-breast-cancer-survivor/follow-up-care-after-breast-cancer-treatment.html"
-      ]
+      ],
+      "name": "Bone Followup"
     },
     "End Gynecologist Visit": {
       "type": "EncounterEnd",
-      "direct_transition": "Bone Followup"
+      "direct_transition": "Bone Followup",
+      "name": "End Gynecologist Visit"
     },
     "Pelvic Exam": {
       "type": "Procedure",
@@ -1166,7 +1117,8 @@
         "You can expect to feel a little discomfort, but you should not feel pain during a pelvic exam. The exam itself takes about 10 minutes. If you have any questions during the exam, be sure to ask your doctor.",
         "https://www.webmd.com/women/guide/pelvic-examination#1"
       ],
-      "reason": "breast_cancer_condition"
+      "reason": "breast_cancer_condition",
+      "name": "Pelvic Exam"
     },
     "Pap Smear": {
       "type": "Procedure",
@@ -1190,7 +1142,8 @@
         "If you take tamoxifen, tell your doctor about any unusual vaginal bleeding. If you take it and still have your uterus, you need an annual Pap smear, regardless of age.",
         "https://www.webmd.com/breast-cancer/guide/breast-cancer-follow-up-care"
       ],
-      "reason": "breast_cancer_condition"
+      "reason": "breast_cancer_condition",
+      "name": "Pap Smear"
     },
     "Bone Exam": {
       "type": "Procedure",
@@ -1211,7 +1164,8 @@
         "If you have your bone density test done at a hospital, it'll probably be done on a central device, where you lie on a padded platform while a mechanical arm passes over your body. The amount of radiation you're exposed to is very low, much less than the amount emitted during a chest X-ray. The test usually takes about 10 to 30 minutes.",
         "https://www.mayoclinic.org/tests-procedures/bone-density-test/about/pac-20385273"
       ],
-      "reason": "breast_cancer_condition"
+      "reason": "breast_cancer_condition",
+      "name": "Bone Exam"
     },
     "Bone Exam Visit": {
       "type": "Encounter",
@@ -1224,11 +1178,13 @@
           "display": "Follow-up visit (procedure)"
         }
       ],
-      "direct_transition": "Bone Exam"
+      "direct_transition": "Bone Exam",
+      "name": "Bone Exam Visit"
     },
     "End Bone Exam Visit": {
       "type": "EncounterEnd",
-      "direct_transition": "Reset Initial Follow-Up Counter"
+      "direct_transition": "Reset Initial Follow-Up Counter",
+      "name": "End Bone Exam Visit"
     },
     "Years After Treatment Counter": {
       "type": "Counter",
@@ -1250,7 +1206,8 @@
       ],
       "remarks": [
         "Indicate that a year has passed"
-      ]
+      ],
+      "name": "Years After Treatment Counter"
     },
     "Initialize Years After Treatment Counter": {
       "type": "SetAttribute",
@@ -1259,13 +1216,15 @@
       "value": 0,
       "remarks": [
         "1 unit of the counter represents around 1 year after completing treatment."
-      ]
+      ],
+      "name": "Initialize Years After Treatment Counter"
     },
     "Reset Initial Follow-Up Counter": {
       "type": "SetAttribute",
       "attribute": "breast_cancer_init_followup_counter",
       "direct_transition": "Years After Treatment Counter",
-      "value": 0
+      "value": 0,
+      "name": "Reset Initial Follow-Up Counter"
     },
     "1 Year Passed": {
       "type": "Delay",
@@ -1274,7 +1233,8 @@
         "low": 11,
         "high": 13,
         "unit": "months"
-      }
+      },
+      "name": "1 Year Passed"
     },
     "Initial Follow-Up Doctor Visit": {
       "type": "Encounter",
@@ -1291,19 +1251,22 @@
       "remarks": [
         "Doctor visits: At first, your follow-up doctor visits will probably be scheduled for every few months. The longer you have been free of cancer, the less often the appointments are needed. After 5 years, they are typically done about once a year.",
         "https://www.cancer.org/cancer/breast-cancer/living-as-a-breast-cancer-survivor/follow-up-care-after-breast-cancer-treatment.html"
-      ]
+      ],
+      "name": "Initial Follow-Up Doctor Visit"
     },
     "Treatment Unsuccessful": {
       "type": "SetAttribute",
       "attribute": "breast_cancer_survival",
       "direct_transition": "Impending Death from Cancer Complications",
-      "value": "no"
+      "value": "no",
+      "name": "Treatment Unsuccessful"
     },
     "Treatment Successful": {
       "type": "SetAttribute",
       "attribute": "breast_cancer_survival",
       "direct_transition": "Sit-Down with Oncologist to Discuss Treatment Options",
-      "value": "yes"
+      "value": "yes",
+      "name": "Treatment Successful"
     },
     "Regular Mammogram Visit": {
       "type": "Encounter",
@@ -1315,7 +1278,8 @@
           "display": "Periodic reevaluation and management of healthy individual (procedure)"
         }
       ],
-      "direct_transition": "Screening Mammogram"
+      "direct_transition": "Screening Mammogram",
+      "name": "Regular Mammogram Visit"
     },
     "Breast Cancer Found": {
       "type": "ConditionOnset",
@@ -1327,7 +1291,8 @@
         }
       ],
       "direct_transition": "Diagnose_TNM_Markers",
-      "assign_to_attribute": "breast_cancer_condition"
+      "assign_to_attribute": "breast_cancer_condition",
+      "name": "Breast Cancer Found"
     },
     "Breast Biopsy": {
       "type": "Procedure",
@@ -1357,7 +1322,8 @@
       ],
       "remarks": [
         "https://www.breastcancer.org/research-news/20091204b"
-      ]
+      ],
+      "name": "Breast Biopsy"
     },
     "Time Before Initial Doctor Visit": {
       "type": "Delay",
@@ -1366,7 +1332,8 @@
         "low": 0,
         "high": 1,
         "unit": "weeks"
-      }
+      },
+      "name": "Time Before Initial Doctor Visit"
     },
     "Delay for Analysis of Possible Treatments": {
       "type": "Delay",
@@ -1375,7 +1342,8 @@
         "high": 7,
         "unit": "days"
       },
-      "direct_transition": "Breast Cancer Treatment Success Rate"
+      "direct_transition": "Breast Cancer Treatment Success Rate",
+      "name": "Delay for Analysis of Possible Treatments"
     },
     "Sit-Down with Oncologist to Discuss Treatment Options": {
       "type": "Encounter",
@@ -1392,11 +1360,13 @@
       "remarks": [
         "Treatment Options:",
         "https://www.cancer.net/cancer-types/breast-cancer/types-treatment"
-      ]
+      ],
+      "name": "Sit-Down with Oncologist to Discuss Treatment Options"
     },
     "End Meeting with Oncologist": {
       "type": "EncounterEnd",
-      "direct_transition": "Choose_Treatment_Option"
+      "direct_transition": "Choose_Treatment_Option",
+      "name": "End Meeting with Oncologist"
     },
     "Stage I Treatment": {
       "type": "Simple",
@@ -1417,7 +1387,8 @@
         "Stage 3: Relative survival rate of 72 percent. Many women with this stage breast cancer are treated successfully.",
         "Stage 4: Relative survival rate of 22 percent. Many different treatment options are available:",
         "https://www.medicalnewstoday.com/articles/316867.php"
-      ]
+      ],
+      "name": "Stage I Treatment"
     },
     "Choose_Treatment_Option": {
       "type": "Delay",
@@ -1460,7 +1431,8 @@
       ],
       "remarks": [
         "Decision for Neoadjuvant Chemotherapy based upon conversations with Doctor Jim O'Connor"
-      ]
+      ],
+      "name": "Choose_Treatment_Option"
     },
     "End Treatment": {
       "type": "Observation",
@@ -1505,12 +1477,14 @@
         "system": "SNOMED-CT",
         "code": 445528004,
         "display": "Treatment changed (situation)"
-      }
+      },
+      "name": "End Treatment"
     },
     "End Neodjuvant Medication in Preparation for Surgery": {
       "type": "MedicationEnd",
       "direct_transition": "End_Neoadjuvant_Chemo_Treatment",
-      "referenced_by_attribute": "breast_cancer_neoMed"
+      "referenced_by_attribute": "breast_cancer_neoMed",
+      "name": "End Neodjuvant Medication in Preparation for Surgery"
     },
     "Neoadjuvant Chemo Before Surgery": {
       "type": "Encounter",
@@ -1523,7 +1497,8 @@
         }
       ],
       "direct_transition": "Chemotherapy Drugs",
-      "reason": "breast_cancer_condition"
+      "reason": "breast_cancer_condition",
+      "name": "Neoadjuvant Chemo Before Surgery"
     },
     "End Chemo Treatment": {
       "type": "Delay",
@@ -1536,7 +1511,8 @@
       "remarks": [
         "This issue of time interval between completion of neoadjuvant chemotherapy and surgery has also not been well addressed in large randomized clinical trials on neoadjuvant systemic therapy and many do not even specify the recommended interval (8-10). But when mentioned, a surgery between 2 and 5 weeks after the last chemotherapy cycle was recommended (11-13):",
         "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5293647/"
-      ]
+      ],
+      "name": "End Chemo Treatment"
     },
     "Doxorubicin": {
       "type": "MedicationOrder",
@@ -1554,7 +1530,8 @@
       ],
       "direct_transition": "Neoadjuvant chemotherapy procedure",
       "assign_to_attribute": "breast_cancer_neoMed",
-      "reason": "breast_cancer_condition"
+      "reason": "breast_cancer_condition",
+      "name": "Doxorubicin"
     },
     "Epirubicin": {
       "type": "MedicationOrder",
@@ -1567,7 +1544,8 @@
       ],
       "direct_transition": "Neoadjuvant chemotherapy procedure",
       "assign_to_attribute": "breast_cancer_neoMed",
-      "reason": "breast_cancer_condition"
+      "reason": "breast_cancer_condition",
+      "name": "Epirubicin"
     },
     "Paclitaxel": {
       "type": "MedicationOrder",
@@ -1580,7 +1558,8 @@
       ],
       "direct_transition": "Neoadjuvant chemotherapy procedure",
       "assign_to_attribute": "breast_cancer_neoMed",
-      "reason": "breast_cancer_condition"
+      "reason": "breast_cancer_condition",
+      "name": "Paclitaxel"
     },
     "Anthracyclines": {
       "type": "Simple",
@@ -1603,7 +1582,8 @@
         "Carboplatin (Paraplatin)",
         "Most often, combinations of 2 or 3 of these drugs are used:",
         "https://www.cancer.org/cancer/breast-cancer/treatment/chemotherapy-for-breast-cancer.html"
-      ]
+      ],
+      "name": "Anthracyclines"
     },
     "Taxanes": {
       "type": "Simple",
@@ -1617,7 +1597,8 @@
         "Carboplatin (Paraplatin)",
         "Most often, combinations of 2 or 3 of these drugs are used:",
         "https://www.cancer.org/cancer/breast-cancer/treatment/chemotherapy-for-breast-cancer.html"
-      ]
+      ],
+      "name": "Taxanes"
     },
     "End_Neoadjuvant_Chemo_Treatment": {
       "type": "EncounterEnd",
@@ -1634,7 +1615,8 @@
         {
           "transition": "End Chemo Treatment"
         }
-      ]
+      ],
+      "name": "End_Neoadjuvant_Chemo_Treatment"
     },
     "Chemotherapy Drugs": {
       "type": "Simple",
@@ -1697,13 +1679,15 @@
             }
           ]
         }
-      ]
+      ],
+      "name": "Chemotherapy Drugs"
     },
     "Set pre-surgery chemo counter": {
       "type": "SetAttribute",
       "attribute": "breast_cancer_neoCount",
       "direct_transition": "Neoadjuvant Chemo Before Surgery",
-      "value": 0
+      "value": 0,
+      "name": "Set pre-surgery chemo counter"
     },
     "Neoadjuvant chemotherapy procedure": {
       "type": "Procedure",
@@ -1724,13 +1708,15 @@
         "Some last as long as three or four hours, while others may only take a half-hour:",
         "https://www.cancercarenorthwest.com/frequently-asked-questions/"
       ],
-      "reason": "breast_cancer_condition"
+      "reason": "breast_cancer_condition",
+      "name": "Neoadjuvant chemotherapy procedure"
     },
     "Increment pre-surgery chemo counter": {
       "type": "Counter",
       "attribute": "breast_cancer_neoCount",
       "action": "increment",
-      "direct_transition": "Delay Until Next Cycle"
+      "direct_transition": "Delay Until Next Cycle",
+      "name": "Increment pre-surgery chemo counter"
     },
     "Delay Until Next Cycle": {
       "type": "Delay",
@@ -1743,7 +1729,8 @@
       "remarks": [
         "Doctors give chemo in cycles, with each period of treatment followed by a rest period to give you time to recover from the effects of the drugs. Cycles are most often 2 or 3 weeks long. The schedule varies depending on the drugs used:",
         "https://www.cancer.org/cancer/breast-cancer/treatment/chemotherapy-for-breast-cancer.html"
-      ]
+      ],
+      "name": "Delay Until Next Cycle"
     },
     "Start New Chemo Cycle": {
       "type": "Encounter",
@@ -1756,7 +1743,8 @@
           "display": "Encounter for problem"
         }
       ],
-      "direct_transition": "Chemotherapy Drugs"
+      "direct_transition": "Chemotherapy Drugs",
+      "name": "Start New Chemo Cycle"
     },
     "Begin Hormone Therapy Treatment": {
       "type": "CallSubmodule",
@@ -1764,7 +1752,8 @@
       "direct_transition": "End Treatment",
       "remarks": [
         "Order of hormone therapy after surgery and radiation was based off of a conversation with Doctor Jim O'Connor."
-      ]
+      ],
+      "name": "Begin Hormone Therapy Treatment"
     },
     "Begin Surgery and Radiation Treatment": {
       "type": "CallSubmodule",
@@ -1772,7 +1761,8 @@
       "direct_transition": "Begin Hormone Therapy Treatment",
       "remarks": [
         "Order of hormone therapy after surgery and radiation was based off of a conversation with Doctor Jim O'Connor."
-      ]
+      ],
+      "name": "Begin Surgery and Radiation Treatment"
     },
     "Screening Mammogram": {
       "type": "Procedure",
@@ -1802,32 +1792,13 @@
         "Mammogram",
         "A mammogram is an x-ray that allows a qualified specialist to examine the breast tissue for any suspicious areas.  In a diagnostic mammogram, more x-rays are taken, providing views of the breast from multiple vantage points.",
         "https://www.nationalbreastcancer.org/breast-cancer-diagnosis"
-      ]
+      ],
+      "name": "Screening Mammogram"
     },
     "Post-Treatment Surveillance": {
       "type": "Simple",
-      "direct_transition": "Initialize Initial Follow-Up Counter"
-    },
-    "Age 85-140": {
-      "type": "Delay",
-      "range": {
-        "low": 85,
-        "high": 140,
-        "unit": "years"
-      },
-      "distributed_transition": [
-        {
-          "transition": "Regular Mammogram Visit",
-          "distribution": 0.48
-        },
-        {
-          "transition": "BreastCancer_Symptom1",
-          "distribution": 0.52
-        }
-      ],
-      "remarks": [
-        "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4127601/pdf/WJCO-5-283.pdf"
-      ]
+      "direct_transition": "Initial Treatment Complete",
+      "name": "Post-Treatment Surveillance"
     },
     "Age 0-39": {
       "type": "Delay",
@@ -1839,7 +1810,8 @@
         "high": 39,
         "unit": "years"
       },
-      "direct_transition": "BreastCancer_Symptom1"
+      "direct_transition": "BreastCancer_Symptom1",
+      "name": "Age 0-39"
     },
     "Age 69-85": {
       "type": "Delay",
@@ -1860,7 +1832,8 @@
       ],
       "remarks": [
         "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4127601/pdf/WJCO-5-283.pdf"
-      ]
+      ],
+      "name": "Age 69-85"
     },
     "Age 39-59": {
       "type": "Delay",
@@ -1881,7 +1854,8 @@
           "transition": "BreastCancer_Symptom1",
           "distribution": 0.37
         }
-      ]
+      ],
+      "name": "Age 39-59"
     },
     "Age 60-69": {
       "type": "Delay",
@@ -1918,7 +1892,8 @@
             }
           ]
         }
-      ]
+      ],
+      "name": "Age 60-69"
     },
     "Improvement After Neoadjuvant Chemotherapy": {
       "type": "Observation",
@@ -1939,7 +1914,8 @@
         "system": "SNOMED-CT",
         "code": 385633008,
         "display": "Improving (qualifier value)"
-      }
+      },
+      "name": "Improvement After Neoadjuvant Chemotherapy"
     },
     "Improvement After Surgery/Therapy": {
       "type": "Observation",
@@ -1960,7 +1936,8 @@
         "code": 385633008,
         "display": "Improving (qualifier value)"
       },
-      "direct_transition": "Post-Treatment Surveillance"
+      "direct_transition": "Post-Treatment Surveillance",
+      "name": "Improvement After Surgery/Therapy"
     },
     "Worsening After Surgery/Therapy": {
       "type": "Observation",
@@ -1981,7 +1958,8 @@
         "code": 230993007,
         "display": "Worsening (qualifier value)"
       },
-      "direct_transition": "Post-Treatment Surveillance"
+      "direct_transition": "Post-Treatment Surveillance",
+      "name": "Worsening After Surgery/Therapy"
     },
     "Post-Op Cancer Status": {
       "type": "Simple",
@@ -2000,7 +1978,8 @@
             "name": "Treatment Successful"
           }
         }
-      ]
+      ],
+      "name": "Post-Op Cancer Status"
     },
     "Ineffective Treatment": {
       "type": "Observation",
@@ -2021,7 +2000,8 @@
         "code": 230993007,
         "display": "Worsening (qualifier value)"
       },
-      "direct_transition": "4 Months between Initial Follow-Ups"
+      "direct_transition": "4 Months between Initial Follow-Ups",
+      "name": "Ineffective Treatment"
     },
     "Effective Treatment": {
       "type": "Observation",
@@ -2042,7 +2022,8 @@
         "code": 385633008,
         "display": "Improving (qualifier value)"
       },
-      "direct_transition": "4 Months between Initial Follow-Ups"
+      "direct_transition": "4 Months between Initial Follow-Ups",
+      "name": "Effective Treatment"
     },
     "Breast Cancer Treatment Success Rate": {
       "type": "Simple",
@@ -2083,7 +2064,8 @@
             "name": "Stage IV"
           }
         }
-      ]
+      ],
+      "name": "Breast Cancer Treatment Success Rate"
     },
     "Impending Death from Cancer Complications": {
       "type": "Death",
@@ -2093,7 +2075,71 @@
         "high": 5,
         "unit": "years"
       },
-      "direct_transition": "Sit-Down with Oncologist to Discuss Treatment Options"
+      "direct_transition": "Sit-Down with Oncologist to Discuss Treatment Options",
+      "name": "Impending Death from Cancer Complications"
+    },
+    "Set Stage IV": {
+      "type": "SetAttribute",
+      "attribute": "stage",
+      "direct_transition": "Delay for Analysis of Possible Treatments",
+      "name": "Set Stage IV",
+      "value": "Stage IV"
+    },
+    "Set Stage IA": {
+      "type": "SetAttribute",
+      "attribute": "stage",
+      "direct_transition": "Stage I",
+      "name": "Set Stage IA",
+      "value": "Stage IA"
+    },
+    "Set Stage IB": {
+      "type": "SetAttribute",
+      "attribute": "stage",
+      "name": "Set Stage IB",
+      "value": "Stage IB",
+      "direct_transition": "Stage I"
+    },
+    "Set Stage IIA": {
+      "type": "SetAttribute",
+      "attribute": "stage",
+      "name": "Set Stage IIA",
+      "value": "Stage IIA",
+      "direct_transition": "Stage II"
+    },
+    "Set Stage IIB": {
+      "type": "SetAttribute",
+      "attribute": "stage",
+      "name": "Set Stage IIB",
+      "value": "Stage IIB",
+      "direct_transition": "Stage II"
+    },
+    "Set Stage IIIA": {
+      "type": "SetAttribute",
+      "attribute": "stage",
+      "name": "Set Stage IIIA",
+      "value": "Stage IIIA",
+      "direct_transition": "Stage III"
+    },
+    "Set Stage IIIB": {
+      "type": "SetAttribute",
+      "attribute": "stage",
+      "name": "Set Stage IIIB",
+      "value": "Stage IIIB",
+      "direct_transition": "Stage III"
+    },
+    "Set Stage IIIC": {
+      "type": "SetAttribute",
+      "attribute": "stage",
+      "name": "Set Stage IIIC",
+      "value": "Stage IIIC",
+      "direct_transition": "Stage III"
+    },
+    "Initial Treatment Complete": {
+      "type": "SetAttribute",
+      "attribute": "initial_treatment_complete",
+      "direct_transition": "Initialize Initial Follow-Up Counter",
+      "name": "Initial Treatment Complete",
+      "value": "yes"
     }
   }
 }

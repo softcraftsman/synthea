@@ -51,7 +51,7 @@ public class Module {
     Map<String, ModuleSupplier> retVal = new ConcurrentHashMap<>();
     AtomicInteger submoduleCount = new AtomicInteger();
 
-    // retVal.put("Lifecycle", new ModuleSupplier(new LifecycleModule()));
+    retVal.put("Lifecycle", new ModuleSupplier(new LifecycleModule()));
     // retVal.put("Cardiovascular Disease", new ModuleSupplier(new CardiovascularDiseaseModule()));
     retVal.put("Quality Of Life", new ModuleSupplier(new QualityOfLifeModule()));
     // retVal.put("Weight Loss", new ModuleSupplier(new WeightLossModule()));

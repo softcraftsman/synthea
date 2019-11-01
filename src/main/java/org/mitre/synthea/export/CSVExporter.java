@@ -105,6 +105,10 @@ public class CSVExporter {
    * Writer for payerTransitions.csv
    */
   private FileWriter payerTransitions;
+  /**
+   * Writer for deathStatistics.csv
+   */
+  private FileWriter deathStatistics;
 
   /**
    * System-dependent string for a line break. (\n on Mac, *nix, \r\n on Windows)
@@ -163,6 +167,9 @@ public class CSVExporter {
       File payerTransitionsFile = outputDirectory.resolve("payer_transitions.csv").toFile();
       payers = new FileWriter(payersFile, append);
       payerTransitions = new FileWriter(payerTransitionsFile, append);
+      File deathStatisticsFile = outputDirectory.resolve("deathStatistics.csv").toFile();
+      deathStatistics = new FileWriter(deathStatisticsFile, append);
+
 
       if (!append) {
         writeCSVHeaders();
@@ -221,6 +228,8 @@ public class CSVExporter {
     payers.write(NEWLINE);
     payerTransitions.write("PATIENT,START_YEAR,END_YEAR,PAYER,OWNERSHIP,QOLS_FOR_YEAR");
     payerTransitions.write(NEWLINE);
+    deathStatistics.write("BIRTH_DATE,CONDITION_ONSET_DATE,STAGE_DIAGNOSED,BREAST_CANCER_SURVIVOR,DEATH_DATE,DEATH_CAUSE,DEATH_FROM_UNCOVERED,SURVIVAL_LENGTH");
+    deathStatistics.write(NEWLINE);
   }
 
   /**
@@ -350,7 +359,7 @@ public class CSVExporter {
   public void export(Person person, long time) throws IOException {
     String personID = patient(person, time);
 
-    for (Encounter encounter : person.record.encounters) {
+    for (Encounter encounter : person.coveredHealthRecord.encounters) {
 
       String encounterID = encounter(personID, encounter);
       String payerID = encounter.claim.payer.uuid;
@@ -387,6 +396,45 @@ public class CSVExporter {
         imagingStudy(personID, encounterID, imagingStudy);
       }
     }
+
+    for (Encounter encounter : person.uncoveredHealthRecord.encounters) {
+
+      String encounterID = encounter(personID, encounter);
+      String payerID = encounter.claim.payer.uuid;
+
+      for (HealthRecord.Entry condition : encounter.conditions) {
+        condition(personID, encounterID, condition);
+      }
+
+      for (HealthRecord.Entry allergy : encounter.allergies) {
+        allergy(personID, encounterID, allergy);
+      }
+
+      for (Observation observation : encounter.observations) {
+        observation(personID, encounterID, observation);
+      }
+
+      for (Procedure procedure : encounter.procedures) {
+        procedure(personID, encounterID, procedure);
+      }
+
+      for (Medication medication : encounter.medications) {
+        medication(personID, encounterID, payerID, medication, time);
+      }
+
+      for (HealthRecord.Entry immunization : encounter.immunizations) {
+        immunization(personID, encounterID, immunization);
+      }
+
+      for (CarePlan careplan : encounter.careplans) {
+        careplan(personID, encounterID, careplan);
+      }
+
+      for (ImagingStudy imagingStudy : encounter.imagingStudies) {
+        imagingStudy(personID, encounterID, imagingStudy);
+      }
+    }
+
     CSVExporter.getInstance().exportPayerTransitions(person, time);
 
     int yearsOfHistory = Integer.parseInt(Config.get("exporter.years_of_history"));
@@ -491,13 +539,134 @@ public class CSVExporter {
     // HEALTHCARE_EXPENSES
     s.append(person.getHealthcareExpenses()).append(',');
     // HEALTHCARE_COVERAGE
-    s.append(person.getHealthcareCoverage());
+    s.append(person.getHealthcareCoverage()).append(',');
+    // QALYS
+    s.append(person.attributes.get("most-recent-qaly")).append(',');
+    // DALYS
+    s.append(person.attributes.get("most-recent-daly")).append(',');
+    // AGE LIVED
+    s.append( person.ageInYears((long) person.attributes.get(Person.DEATHDATE)));
 
     s.append(NEWLINE);
     write(s.toString(), patients);
 
+
+    deathStatistics(person);
+    deathStatistics.flush();
+
+
     return personID;
   }
+
+  public void deathStatistics(Person person) throws IOException {
+    // "BIRTH_DATE,CONDITION_ONSET_DATE,STAGE_DIAGNOSED,BREAST_CANCER_SURVIVOR,DEATH_DATE,DEATH_CAUSE,DEATH_FROM_UNCOVERED,SURVIVAL_LENGTH"
+
+    StringBuilder s = new StringBuilder();
+
+    // Birthdate
+    long birthDate = (long) person.attributes.get(Person.BIRTHDATE);
+    s.append(dateFromTimestamp(birthDate)).append(',');
+
+    // Condition Onset Date
+    long onsetDate = (long) getConditionOnsetDate(person);
+    s.append(dateFromTimestamp(onsetDate)).append(',');
+
+    // Diagnosis Stage
+    s.append(diagnosisStage(person)).append(',');
+
+    // Is a Breast Cancer Survivor?
+    s.append(person.attributes.get("breast_cancer_survival")).append(',');
+
+    // Deathdate
+    long deathDate = (long) person.attributes.get(Person.DEATHDATE);
+    s.append(dateFromTimestamp(deathDate)).append(',');
+
+    // Cause of Death (Breast cancer/natural causes/Uncovered Treatment)
+    s.append(person.attributes.get(Person.CAUSE_OF_DEATH)).append(',');
+
+    // Death From Uncovered Treatment
+    s.append(person.attributes.get("death_from_uncoverage")).append(',');
+
+    // Survival Length
+    s.append(Utilities.getYear(deathDate) - Utilities.getYear(onsetDate));
+
+    s.append(NEWLINE);
+    write(s.toString(), deathStatistics);
+
+  }
+
+  public long getConditionOnsetDate(Person person) {
+
+    for (Encounter encounter : person.uncoveredHealthRecord.encounters) {
+      for (HealthRecord.Entry condition : encounter.conditions) {
+        if (condition.name.equals("Breast Cancer")
+            || condition.name.equals("Breast Cancer Found")) {
+              return condition.start;
+            }
+      }
+    }
+    for (Encounter encounter : person.coveredHealthRecord.encounters) {
+      for (HealthRecord.Entry condition : encounter.conditions) {
+        if (condition.name.equals("Breast Cancer")
+            || condition.name.equals("Breast Cancer Found")) {
+              return condition.start;
+            }
+      }
+    }
+    System.out.println("It aint null... " + person.attributes.get("breast_cancer_survival"));
+    throw new RuntimeException(person.attributes.get(Person.NAME) + " DID NOT HAVE BREAST CANCER");
+  }
+
+  public static String diagnosisStage(Person person) {
+
+    return (String) person.attributes.get("stage");
+
+    // Check for diagnosis stage in covered health record
+    // String stage = checkPersonForBreastCancerStage(person.coveredHealthRecord);
+    // // If its not in the covered record, check the uncovered record
+    // if (stage.equals("-1")) {
+    //   stage = checkPersonForBreastCancerStage(person.uncoveredHealthRecord);
+    // }
+    // // If stage still has not been found, throw an exception.
+    // if (!stage.equals("-1")) {
+    //   return stage;
+    // }
+    // throw new RuntimeException("Person did not have a stage diagnosis. " + person.attributes.get(Person.NAME));
+  }
+
+  public static String checkPersonForBreastCancerStage(HealthRecord record) {
+
+    for (Encounter encounter : record.encounters) {
+      for (Observation entry : encounter.observations) {
+        for (Code code : entry.codes) {
+          // Stage I: 258215001
+          if (code.code.equals("258215001")
+              || code.code.equals("21908-9")) {
+            return "Stage I";
+          }
+          // Stage II: 258219007
+          if (code.code.equals("258219007")
+              || code.code.equals("21908-9")) {
+            return "Stage II";
+          }
+          // Stage III: 258224005
+          if (code.code.equals("258224005")
+              || code.code.equals("21908-9")) {
+            return "Stage III";
+          }
+          // Stage IV: 258228008
+          if (code.code.equals("258228008")
+              || code.code.equals("21908-9")) {
+            return "Stage IV";
+          }
+          // Breast Cancer Condition Onset: 254837009
+        }
+      }
+    }
+    return "-1";
+  }
+
+
 
   /**
    * Write a single Encounter line to encounters.csv.

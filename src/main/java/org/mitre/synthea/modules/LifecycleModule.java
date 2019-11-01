@@ -41,6 +41,7 @@ public final class LifecycleModule extends Module {
   public static final String QUIT_ALCOHOLISM_PROBABILITY = "quit alcoholism probability";
   public static final String QUIT_ALCOHOLISM_AGE = "quit alcoholism age";
   public static final String ADHERENCE_PROBABILITY = "adherence probability";
+  public static final Code UCOVERED_BREASTCANCER_TREATMENT = new Code("SNOMED-CT", "1111111", "Death due to Uncovered Breast Cancer Treatment");
 
   public static final boolean appendNumbersToNames = Boolean
       .parseBoolean(Config.get("generate.append_numbers_to_person_names", "false"));
@@ -103,13 +104,13 @@ public final class LifecycleModule extends Module {
     if (age(person, time)) {
       grow(person, time);
     }
-    startSmoking(person, time);
-    startAlcoholism(person, time);
-    quitSmoking(person, time);
-    quitAlcoholism(person, time);
-    adherence(person, time);
-    calculateVitalSigns(person, time);
-    calculateFallRisk(person, time);
+    // startSmoking(person, time);
+    // startAlcoholism(person, time);
+    // quitSmoking(person, time);
+    // quitAlcoholism(person, time);
+    // adherence(person, time);
+    // calculateVitalSigns(person, time);
+    // calculateFallRisk(person, time);
     death(person, time);
 
     // java modules will never "finish"
@@ -820,136 +821,87 @@ public final class LifecycleModule extends Module {
 
   protected static void death(Person person, long time) {
     if (ENABLE_DEATH_BY_NATURAL_CAUSES) {
-      double roll = person.rand();
-      double likelihoodOfDeath = likelihoodOfDeath(person.ageInYears(time));
-      if (roll < likelihoodOfDeath) {
+      if (person.ageInYears(time) >= 87) {
         person.recordDeath(time, NATURAL_CAUSES);
       }
-    } else if (person.uncoveredHealthRecord != null) {
-
-      if (likelihoodOfDeathFromUncoveredBreastCancerTreatment(person)) {
-        Code UCOVERED_BREASTCANCER_TREATMENT = new Code("SNOMED-CT", "1111111", "Death due to Uncovered Breast Cancer Treatment");
-        person.recordDeath(time, UCOVERED_BREASTCANCER_TREATMENT);
-      }
     }
-  }
-
-  protected static double likelihoodOfDeath(int age) {
-    double yearlyRisk;
-
-    if (age < 1) {
-      yearlyRisk = 508.1 / 100_000.0;
-    } else if (age >= 1 && age <= 4) {
-      yearlyRisk = 15.6 / 100_000.0;
-    } else if (age >= 5 && age <= 14) {
-      yearlyRisk = 10.6 / 100_000.0;
-    } else if (age >= 15 && age <= 24) {
-      yearlyRisk = 56.4 / 100_000.0;
-    } else if (age >= 25 && age <= 34) {
-      yearlyRisk = 74.7 / 100_000.0;
-    } else if (age >= 35 && age <= 44) {
-      yearlyRisk = 145.7 / 100_000.0;
-    } else if (age >= 45 && age <= 54) {
-      yearlyRisk = 326.5 / 100_000.0;
-    } else if (age >= 55 && age <= 64) {
-      yearlyRisk = 737.8 / 100_000.0;
-    } else if (age >= 65 && age <= 74) {
-      yearlyRisk = 1817.0 / 100_000.0;
-    } else if (age >= 75 && age <= 84) {
-      yearlyRisk = 4877.3 / 100_000.0;
-    } else if (age >= 85 && age <= 94) {
-      yearlyRisk = 13_499.4 / 100_000.0;
-    } else {
-      yearlyRisk = 50_000.0 / 100_000.0;
+    if (deathFromUncoveredBreastCancerTreatment(person)) {
+      person.attributes.put("breast_cancer_survival", "no");
+      person.attributes.put("death_from_uncoverage", "yes");
+      person.recordDeath(time, UCOVERED_BREASTCANCER_TREATMENT);
     }
-
-    double oneYearInMs = TimeUnit.DAYS.toMillis(365);
-    double adjustedRisk = Utilities.convertRiskToTimestep(yearlyRisk, oneYearInMs);
-
-    return adjustedRisk;
   }
 
   /**
    * Determines wether a person will die because of uncovered breast cancer treatment
    */
-  public static boolean likelihoodOfDeathFromUncoveredBreastCancerTreatment(Person person) {
+  public static boolean deathFromUncoveredBreastCancerTreatment(Person person) {
 
-    for (Encounter encounter : person.uncoveredHealthRecord.encounters) {
-      for (Procedure procedure : encounter.procedures) {
-        for (Code code : procedure.codes) {
 
-          if (code.code.equals("367336001")) {
-            // Probability of death for missing:
-            // Neoadjuvant chemo procedure: 367336001
-          }
-          if (code.code.equals("185347001")) {
-            // Probability of death for missing:
-            // Neoadjuvant before surgery: 185347001
-          }
-          if (code.code.equals("254837009")) {
-            // Probability of death for missing:
-            // Breast Cancer found: 254837009
-          }
+    if(person.attributes.get("initial_treatment_complete").equals("yes")) {
 
-          // Stage IV: 258228008
-          // Stage III: 258224005
-          // Stage I: 258215001
-          // Stage II: 258219007
-          // Breast Cancer found: 254837009
+      Random r = new Random();
+
+      for (Encounter encounter : person.uncoveredHealthRecord.encounters) {
+        for (Procedure procedure : encounter.procedures) {
+          for (Code code : procedure.codes) {
+
+            if (code.code.equals("33195004")) {
+
+              person.attributes.put("initial_treatment_complete", "no");
+              return r.nextDouble() < 0.6;
+
+              // Probability of death for missing:
+              // trelodopholy procedure: 367336001
+            }
+            else if (code.code.equals("367336001")) {
+              // System.out.println("- " + person.attributes.get(Person.NAME) + " DEATH From 367336001");
+
+              person.attributes.put("initial_treatment_complete", "no");
+              return r.nextDouble() < 0.6;
+
+              // Probability of death for missing:
+              // Chemo
+            }
+            // Doesn't exist as procedure?
+            else if (code.code.equals("185347001")) {
+              // System.out.println("- " + person.attributes.get(Person.NAME) + " DEATH From 185347001");
+
+              person.attributes.put("initial_treatment_complete", "no");
+              return r.nextDouble() < 0.6;
+
+              // Probability of death for missing:
+              // Neoadjuvant before surgery: 185347001
+            }
+            else if (code.code.equals("108290001")) {
+
+              person.attributes.put("initial_treatment_complete", "no");
+              return r.nextDouble() < 0.6;
+
+              // Probability of death for missing:
+              // Radiation oncology AND/OR radiotherapy (procedure)
+            }
+            else if (code.code.equals("392021009")) {
+
+              person.attributes.put("initial_treatment_complete", "no");
+              return r.nextDouble() < 0.6;
+
+              // Probability of death for missing:
+              // lumpectomy procedure
+            }
+            else if (code.code.equals("385798007")) {
+
+              person.attributes.put("initial_treatment_complete", "no");
+              return r.nextDouble() < 0.6;
+
+              // Probability of death for missing:
+              // Radiation therapy care (regime/therapy)
+            }
+          }
         }
       }
     }
-
     return false;
-  }
-
-  private static void startSmoking(Person person, long time) {
-    // 9/10 smokers start before age 18. We will use 16.
-    // http://www.cdc.gov/tobacco/data_statistics/fact_sheets/youth_data/tobacco_use/
-    if (person.attributes.get(Person.SMOKER) == null && person.ageInYears(time) == 16) {
-      int year = Utilities.getYear(time);
-      Boolean smoker = person.rand() < likelihoodOfBeingASmoker(year);
-      person.attributes.put(Person.SMOKER, smoker);
-      double quitSmokingBaseline = Double
-          .parseDouble(Config.get("lifecycle.quit_smoking.baseline", "0.01"));
-      person.attributes.put(LifecycleModule.QUIT_SMOKING_PROBABILITY, quitSmokingBaseline);
-    }
-  }
-
-  private static double likelihoodOfBeingASmoker(int year) {
-    // 16.1% of MA are smokers in 2016.
-    // http://www.cdc.gov/tobacco/data_statistics/state_data/state_highlights/2010/states/massachusetts/
-    // but the rate is decreasing over time
-    // http://www.cdc.gov/tobacco/data_statistics/tables/trends/cig_smoking/
-    // selected #s:
-    // 1965 - 42.4%
-    // 1975 - 37.1%
-    // 1985 - 30.1%
-    // 1995 - 24.7%
-    // 2005 - 20.9%
-    // 2015 - 16.1%
-    // assume that it was never significantly higher than 42% pre-1960s, but will continue to drop
-    // slowly after 2016
-    // it's decreasing about .5% per year
-    if (year < 1965) {
-      return 0.424;
-    }
-
-    return ((year * -0.4865) + 996.41) / 100.0;
-  }
-
-  private static void startAlcoholism(Person person, long time) {
-    // there are various types of alcoholics with different characteristics
-    // including age of onset of dependence. we pick 25 as a starting point
-    // https://www.therecoveryvillage.com/alcohol-abuse/types-alcoholics/
-    if (person.attributes.get(Person.ALCOHOLIC) == null && person.ageInYears(time) == 25) {
-      // assume about 8 mil alcoholics/320 mil gen pop
-      Boolean alcoholic = person.rand() < 0.025;
-      person.attributes.put(Person.ALCOHOLIC, alcoholic);
-      double quitAlcoholismBaseline = Double
-          .parseDouble(Config.get("lifecycle.quit_alcoholism.baseline", "0.05"));
-      person.attributes.put(QUIT_ALCOHOLISM_PROBABILITY, quitAlcoholismBaseline);
-    }
   }
 
   /**

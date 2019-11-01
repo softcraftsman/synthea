@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.sis.geometry.DirectPosition2D;
 import org.apache.sis.index.tree.QuadTreeData;
@@ -20,6 +21,7 @@ import org.mitre.synthea.helpers.Config;
 import org.mitre.synthea.helpers.ConstantValueGenerator;
 import org.mitre.synthea.helpers.Utilities;
 import org.mitre.synthea.helpers.ValueGenerator;
+import org.mitre.synthea.modules.LifecycleModule;
 import org.mitre.synthea.modules.QualityOfLifeModule;
 import org.mitre.synthea.world.concepts.HealthRecord;
 import org.mitre.synthea.world.concepts.HealthRecord.Code;
@@ -129,6 +131,9 @@ public class Person implements Serializable, QuadTreeData {
     payerOwnerHistory = new String[128];
     healthcareExpensesYearly = new HashMap<Integer, Double>();
     healthcareCoverageYearly = new HashMap<Integer, Double>();
+
+    this.attributes.put("death_from_uncoverage", "no");
+    this.attributes.put("initial_treatment_complete", "no");
   }
 
   /**
@@ -335,10 +340,16 @@ public class Person implements Serializable, QuadTreeData {
    */
   public void recordDeath(long time, Code cause) {
     if (alive(time)) {
+
       attributes.put(Person.DEATHDATE, Long.valueOf(time));
       if (cause == null) {
         attributes.remove(CAUSE_OF_DEATH);
       } else {
+
+        if(cause.equals(LifecycleModule.UCOVERED_BREASTCANCER_TREATMENT)) {
+          // Died from uncovered breast cancer, determine survival length
+        }
+
         attributes.put(CAUSE_OF_DEATH, cause);
       }
       record.death = time;
@@ -564,6 +575,40 @@ public class Person implements Serializable, QuadTreeData {
     }
     // If a person is unmarried and over 18, they own their insurance.
     return "Self";
+  }
+
+  /**
+   * Returns the sum of QALYS of this person's life.
+   * 
+   * @param time
+   * @return
+   */
+  public double getQalys() {
+
+    Map<Integer, Double> qalys = (Map<Integer, Double>) this.attributes.get(QualityOfLifeModule.QALY);
+
+    double sum = 0.0;
+    for (double currQaly : qalys.values()) {
+        sum += currQaly;
+    }
+    return sum;
+  }
+
+  /**
+   * Returns the sum of DALYS of this person's life.
+   * 
+   * @param time
+   * @return
+   */
+  public double getDalys() {
+
+    Map<Integer, Double> dalys = (Map<Integer, Double>) this.attributes.get(QualityOfLifeModule.DALY);
+
+    double sum = 0.0;
+    for (double currDaly : dalys.values()) {
+        sum += currDaly;
+    }
+    return sum;
   }
 
   /**

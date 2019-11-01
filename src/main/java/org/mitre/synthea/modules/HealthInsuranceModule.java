@@ -77,14 +77,17 @@ public class HealthInsuranceModule extends Module {
   private Payer determineInsurance(Person person, long time) {
 
     // If Medicare/Medicaid will accept this person, then it takes priority.
-    if (Payer.getGovernmentPayer("Medicare").accepts(person, time)
-        && Payer.getGovernmentPayer("Medicaid").accepts(person, time)) {
-      return Payer.getGovernmentPayer("Dual Eligible");
-    } else if (Payer.getGovernmentPayer("Medicare").accepts(person, time)) {
-      return Payer.getGovernmentPayer("Medicare");
-    } else if (Payer.getGovernmentPayer("Medicaid").accepts(person, time)) {
+    // if (Payer.getGovernmentPayer("Medicare").accepts(person, time)
+    //     && Payer.getGovernmentPayer("Medicaid").accepts(person, time)) {
+    //   return Payer.getGovernmentPayer("Dual Eligible");
+    // } else 
+    // if (Payer.getGovernmentPayer("Medicare").accepts(person, time)) {
+    //   return Payer.getGovernmentPayer("Medicare");
+    // } else if (medicaid)
+    if (Payer.getGovernmentPayer("Medicaid").accepts(person, time)) {
       return Payer.getGovernmentPayer("Medicaid");
-    } else if (person.getPreviousPayerAtTime(time) != null
+    }
+    else if (person.getPreviousPayerAtTime(time) != null
         && IPayerFinder.meetsBasicRequirements(
         person.getPreviousPayerAtTime(time), person, null, time)) {
       // People will keep their previous year's insurance if they can.

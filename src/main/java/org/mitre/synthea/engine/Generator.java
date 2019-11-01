@@ -316,7 +316,7 @@ public class Generator {
         EncounterModule encounterModule = new EncounterModule();
 
         long time = start;
-        while (person.alive(time) && time < stop) {
+        while (person.alive(time)) {
 
           healthInsuranceModule.process(person, time + timestep);
           encounterModule.process(person, time);
