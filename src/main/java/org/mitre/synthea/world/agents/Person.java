@@ -94,7 +94,7 @@ public class Person implements Serializable, QuadTreeData {
   public transient Map<String, HealthRecord.Medication> chronicMedications;
   /** the active health record. */
   public transient HealthRecord record;
-  transient public Map<String, HealthRecord> records;
+  public transient Map<String, HealthRecord> records;
   public boolean hasMultipleRecords;
   /** History of the currently active module. */
   public transient List<State> history;

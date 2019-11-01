@@ -183,7 +183,7 @@ public class GeneratorTest {
     generateThread.start();
 
     int count = 0;
-    while(generateThread.isAlive()) {
+    while (generateThread.isAlive()) {
       ero.getNextRecord();
       ++count;
 
@@ -195,7 +195,7 @@ public class GeneratorTest {
 
     if (count < numberOfPeople) {
       // Generator thread terminated but we have not gotten enough records yet. Check queue.
-      if(!ero.isRecordQueueEmpty()) {      
+      if (!ero.isRecordQueueEmpty()) {      
         ero.getNextRecord();
         ++count;
       }
