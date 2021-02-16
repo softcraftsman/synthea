@@ -1,5 +1,6 @@
 package org.mitre.synthea.world.concepts;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -9,7 +10,7 @@ import org.mitre.synthea.world.concepts.HealthRecord.Encounter;
 import org.mitre.synthea.world.concepts.HealthRecord.Entry;
 import org.mitre.synthea.world.concepts.HealthRecord.Medication;
 
-public class Claim {
+public class Claim implements Serializable {
 
   private Entry mainEntry;
   // The Entries have the actual cost, so the claim has the amount that the payer covered.
@@ -72,11 +73,6 @@ public class Claim {
       // Payer will not cover the care.
       this.payerDoesNotCoverEntry(mainEntry);
       costToPatient = totalCost;
-      if (person.canAffordCare(mainEntry)) {
-        // Update the person's costs, they get the encounter.
-      } else {
-        // TODO The person does not get the encounter. Lower their QOLS/GBD.
-      }
     }
 
     // Update Person's Expenses and Coverage.
@@ -87,7 +83,8 @@ public class Claim {
     this.payer.addUncoveredCost(costToPatient);
     // Update the Provider's Revenue if this is an encounter.
     if (mainEntry instanceof Encounter) {
-      ((Encounter) mainEntry).provider.addRevenue(totalCost);
+      Encounter e = (Encounter) mainEntry;
+      e.provider.addRevenue(totalCost);
     }
     // Update the Claim.
     this.coveredCost = costToPayer;

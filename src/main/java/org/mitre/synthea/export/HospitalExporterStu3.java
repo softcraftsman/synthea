@@ -25,16 +25,17 @@ import org.mitre.synthea.world.agents.Provider;
 
 public abstract class HospitalExporterStu3 {
 
-  private static final FhirContext FHIR_CTX = FhirContext.forDstu3();
-
   private static final String SYNTHEA_URI = "http://synthetichealth.github.io/synthea/";
 
+  /**
+   * Export the hospital in FHIR STU3 format.
+   */
   public static void export(long stop) {
-    if (Boolean.parseBoolean(Config.get("exporter.hospital.fhir_stu3.export"))) {
+    if (Config.getAsBoolean("exporter.hospital.fhir_stu3.export")) {
 
       Bundle bundle = new Bundle();
-      if (Boolean.parseBoolean(Config.get("exporter.fhir.transaction_bundle"))) {
-        bundle.setType(BundleType.TRANSACTION);
+      if (Config.getAsBoolean("exporter.fhir.transaction_bundle")) {
+        bundle.setType(BundleType.BATCH);
       } else {
         bundle.setType(BundleType.COLLECTION);
       }
@@ -49,7 +50,7 @@ public abstract class HospitalExporterStu3 {
         }
       }
 
-      String bundleJson = FHIR_CTX.newJsonParser().setPrettyPrint(true)
+      String bundleJson = FhirStu3.getContext().newJsonParser().setPrettyPrint(true)
           .encodeResourceToString(bundle);
 
       // get output folder
@@ -68,6 +69,9 @@ public abstract class HospitalExporterStu3 {
     }
   }
 
+  /**
+   * Add FHIR extensions to capture additional information.
+   */
   public static void addHospitalExtensions(Provider h, Organization organizationResource) {
     Table<Integer, String, AtomicInteger> utilization = h.getUtilization();
     // calculate totals for utilization

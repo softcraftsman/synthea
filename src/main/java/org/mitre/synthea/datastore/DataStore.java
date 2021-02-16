@@ -9,10 +9,10 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.mitre.synthea.helpers.Utilities;
+import org.mitre.synthea.modules.QualityOfLifeModule;
 import org.mitre.synthea.world.agents.Payer;
 import org.mitre.synthea.world.agents.Person;
 import org.mitre.synthea.world.agents.Provider;
@@ -52,6 +52,11 @@ public class DataStore {
    */
   private boolean fileBased;
 
+  /**
+   * Create a new DataStore, specifying whether or not the data store
+   * should be written to file (fileBased = true) or kept in-memory (fileBased = false).
+   * @param fileBased Flag for whether the DB uses a file (true) or is in-memory only (false).
+   */
   public DataStore(boolean fileBased) {
     this.fileBased = fileBased;
     try (Connection connection = getConnection()) {
@@ -203,6 +208,11 @@ public class DataStore {
     }
   }
 
+  /**
+   * Get a SQL Connection to this Data Store.
+   * @return Connection - a SQL Connection to this Data Store.
+   * @throws SQLException on errors creating the connection.
+   */
   public Connection getConnection() throws SQLException {
     Connection connection = DriverManager
         .getConnection(this.fileBased ? FILEBASED_JDBC_STRING : IN_MEMORY_JDBC_STRING);
@@ -210,6 +220,11 @@ public class DataStore {
     return connection;
   }
 
+  /**
+   * Store a Person and related information into this Data Store.
+   * @param p - Person to store.
+   * @return Whether or not the person was completely stored (true) or not (false).
+   */
   @SuppressWarnings("unchecked")
   public boolean store(Person p) {
     String personID = (String) p.attributes.get(Person.ID);
@@ -267,7 +282,7 @@ public class DataStore {
       stmt.executeBatch();
 
       for (Encounter encounter : p.record.encounters) {
-        String encounterID = UUID.randomUUID().toString();
+        String encounterID = p.randUUID().toString();
 
         String providerID = null;
 
@@ -327,7 +342,7 @@ public class DataStore {
         }
 
         for (Report report : encounter.reports) {
-          String reportID = UUID.randomUUID().toString();
+          String reportID = p.randUUID().toString();
 
           // CREATE TABLE IF NOT EXISTS REPORT (id varchar, person_id varchar, encounter_id varchar,
           // name varchar, type varchar, start bigint, code varchar, display varchar, system
@@ -459,7 +474,7 @@ public class DataStore {
               "INSERT INTO MEDICATION "
               + "(id, person_id, provider_id, name, type, start, stop, code, display, system) "
               + "VALUES (?,?,?,?,?,?,?,?,?,?);");
-          String medicationID = UUID.randomUUID().toString();
+          String medicationID = p.randUUID().toString();
           stmt.setString(1, medicationID);
           stmt.setString(2, personID);
           stmt.setString(3, providerID);
@@ -485,7 +500,7 @@ public class DataStore {
               "INSERT INTO CLAIM "
               + "(id, person_id, encounter_id, medication_id, time, cost) "
               + "VALUES (?,?,?,?,?,?)");
-          stmt.setString(1, UUID.randomUUID().toString());
+          stmt.setString(1, p.randUUID().toString());
           stmt.setString(2, personID);
           stmt.setString(3, encounterID);
           stmt.setString(4, medicationID);
@@ -528,7 +543,7 @@ public class DataStore {
               "INSERT INTO careplan "
               + "(id, person_id, provider_id, name, type, start, stop, code, display, system) "
               + "VALUES (?,?,?,?,?,?,?,?,?,?);");
-          stmt.setString(1, UUID.randomUUID().toString());
+          stmt.setString(1, p.randUUID().toString());
           stmt.setString(2, personID);
           if (encounter.provider == null) {
             stmt.setString(3, null);
@@ -564,7 +579,7 @@ public class DataStore {
               + "(id, uid, person_id, encounter_id, start, modality_code, modality_display, "
               + "modality_system, bodysite_code, bodysite_display, bodysite_system, sop_class) "
               + "VALUES (?,?,?,?,?,?,?,?,?,?,?,?);");
-          stmt.setString(1, UUID.randomUUID().toString());
+          stmt.setString(1, p.randUUID().toString());
           stmt.setString(2, imagingStudy.dicomUid);
           stmt.setString(3, personID);
           stmt.setString(4, encounterID);
@@ -592,7 +607,7 @@ public class DataStore {
             "INSERT INTO CLAIM "
             + "(id, person_id, encounter_id, medication_id, time, cost) "
             + "VALUES (?,?,?,?,?,?)");
-        stmt.setString(1, UUID.randomUUID().toString());
+        stmt.setString(1, p.randUUID().toString());
         stmt.setString(2, personID);
         stmt.setString(3, encounterID);
         stmt.setString(4, null);
@@ -602,9 +617,12 @@ public class DataStore {
 
       }
 
-      Map<Integer, Double> qalys = (Map<Integer, Double>) p.attributes.get("QALY");
-      Map<Integer, Double> dalys = (Map<Integer, Double>) p.attributes.get("DALY");
-      Map<Integer, Double> qols = (Map<Integer, Double>) p.attributes.get("QOL");
+      Map<Integer, Double> qalys =
+          (Map<Integer, Double>) p.attributes.get(QualityOfLifeModule.QALY);
+      Map<Integer, Double> dalys =
+          (Map<Integer, Double>) p.attributes.get(QualityOfLifeModule.DALY);
+      Map<Integer, Double> qols =
+          (Map<Integer, Double>) p.attributes.get(QualityOfLifeModule.QOLS);
       if (qols != null) {
         // TODO - would rather have something more generic
         stmt = connection.prepareStatement(
@@ -629,6 +647,12 @@ public class DataStore {
     }
   }
 
+  /**
+   * Store a collection of Providers and their related information into this data store.
+   * @param providers - collection of Providers to store.
+   * @return Whether or not the entire collection of Providers was
+   *     stored successfully (true) or not (false).
+   */
   public boolean store(Collection<? extends Provider> providers) {
     try (Connection connection = getConnection()) {
       // CREATE TABLE IF NOT EXISTS PROVIDER (id varchar, name varchar)

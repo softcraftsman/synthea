@@ -1,6 +1,5 @@
 package org.mitre.synthea.export;
 
-import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.model.api.ExtensionDt;
 import ca.uhn.fhir.model.dstu2.resource.Bundle;
 import ca.uhn.fhir.model.dstu2.resource.Bundle.Entry;
@@ -26,16 +25,17 @@ import org.mitre.synthea.world.agents.Provider;
 
 public abstract class HospitalExporterDstu2 {
 
-  private static final FhirContext FHIR_CTX = FhirContext.forDstu2();
-
   private static final String SYNTHEA_URI = "http://synthetichealth.github.io/synthea/";
 
+  /**
+   * Export the hospital in FHIR DSTU2 format.
+   */
   public static void export(long stop) {
-    if (Boolean.parseBoolean(Config.get("exporter.hospital.fhir_dstu2.export"))) {
+    if (Config.getAsBoolean("exporter.hospital.fhir_dstu2.export")) {
       
       Bundle bundle = new Bundle();
-      if (Boolean.parseBoolean(Config.get("exporter.fhir.transaction_bundle"))) {
-        bundle.setType(BundleTypeEnum.TRANSACTION);
+      if (Config.getAsBoolean("exporter.fhir.transaction_bundle")) {
+        bundle.setType(BundleTypeEnum.BATCH);
       } else {
         bundle.setType(BundleTypeEnum.COLLECTION);
       }
@@ -50,7 +50,7 @@ public abstract class HospitalExporterDstu2 {
         }
       }
 
-      String bundleJson = FHIR_CTX.newJsonParser().setPrettyPrint(true)
+      String bundleJson = FhirDstu2.getContext().newJsonParser().setPrettyPrint(true)
           .encodeResourceToString(bundle);
 
       // get output folder
@@ -69,6 +69,9 @@ public abstract class HospitalExporterDstu2 {
     }
   }
 
+  /**
+   * Add FHIR extensions to capture additional information.
+   */
   public static void addHospitalExtensions(Provider h, Organization organizationResource) {
     Table<Integer, String, AtomicInteger> utilization = h.getUtilization();
     // calculate totals for utilization

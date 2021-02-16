@@ -4,8 +4,9 @@ import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
 
+import java.io.Serializable;
 import java.io.StringWriter;
-import java.util.UUID;
+import org.mitre.synthea.helpers.RandomNumberGenerator;
 
 import org.mitre.synthea.world.agents.Person;
 import org.mitre.synthea.world.concepts.HealthRecord.Encounter;
@@ -17,16 +18,23 @@ import org.mitre.synthea.world.concepts.RaceAndEthnicity;
 public class CCDAExporter {
 
   private static final Configuration TEMPLATES = templateConfiguration();
+  
   /**
-   * This is a dummy object for FreeMarker, because the library cannot access static class methods
-   * such as UUID.randomUUID()
+   * This is a dummy class and object for FreeMarker templates that create IDs.
    */
-  private static final Object UUID_GEN = new Object() {
-    public String toString() {
-      return UUID.randomUUID().toString();
+  private static class UUIDGenerator implements Serializable {
+    private RandomNumberGenerator rand;
+    
+    public UUIDGenerator(RandomNumberGenerator rand) {
+      this.rand = rand;
     }
-  };
-
+    
+    @Override
+    public String toString() {
+      return rand.randUUID().toString();
+    }
+  }
+  
   private static Configuration templateConfiguration() {
     Configuration configuration = new Configuration(Configuration.VERSION_2_3_26);
     configuration.setDefaultEncoding("UTF-8");
@@ -77,7 +85,7 @@ public class CCDAExporter {
 
     // The export templates fill in the record by accessing the attributes
     // of the Person, so we add a few attributes just for the purposes of export.
-    person.attributes.put("UUID", UUID_GEN);
+    person.attributes.put("UUID", new UUIDGenerator(person));
     person.attributes.put("ehr_encounters", person.record.encounters);
     person.attributes.put("ehr_observations", superEncounter.observations);
     person.attributes.put("ehr_reports", superEncounter.reports);

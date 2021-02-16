@@ -32,11 +32,22 @@ public class ConceptsTest {
   
   @Test
   public void testConcepts() throws Exception {
-    List<String> concepts = Concepts.getConceptInventory();
+    List<String> concepts = Concepts.getConceptInventory(false);
     // just intended to ensure no exceptions or anything
     // make sure simpleCSV can parse it
     String csv = concepts.stream().collect(Collectors.joining("\n"));
     SimpleCSV.parse(csv);
+    assertTrue(SimpleCSV.isValid(csv));
+  }
+
+  @Test
+  public void testConceptsWithoutCosts() throws Exception {
+    List<String> concepts = Concepts.getConceptInventory(true);
+    // just intended to ensure no exceptions or anything
+    // make sure simpleCSV can parse it
+    String csv = concepts.stream().collect(Collectors.joining("\n"));
+    SimpleCSV.parse(csv);
+    assertTrue(SimpleCSV.isValid(csv));
   }
 
   @Test
@@ -45,7 +56,7 @@ public class ConceptsTest {
     Path modulePath = modulesFolder.resolve("example_module.json");
     
     JsonReader reader = new JsonReader(new FileReader(modulePath.toString()));
-    JsonObject module = new JsonParser().parse(reader).getAsJsonObject();
+    JsonObject module = JsonParser.parseReader(reader).getAsJsonObject();
     
     // example_module has 4 codes:
     List<Code> codes = new ArrayList<Code>();
@@ -68,7 +79,7 @@ public class ConceptsTest {
     Path modulePath = modulesFolder.resolve("condition_onset.json");
     
     JsonReader reader = new JsonReader(new FileReader(modulePath.toString()));
-    JsonObject module = new JsonParser().parse(reader).getAsJsonObject();
+    JsonObject module = JsonParser.parseReader(reader).getAsJsonObject();
     JsonObject state = module.getAsJsonObject("states").getAsJsonObject("Appendicitis");
     
     Concepts.inventoryState(concepts, state, module.get("name").getAsString());

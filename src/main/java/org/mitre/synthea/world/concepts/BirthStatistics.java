@@ -30,8 +30,8 @@ public class BirthStatistics {
   /** Default birth height. */
   public static final double DEFAULT_HEIGHT = 51.0; // centimeters (cm)
 
-  private static final boolean LOG_OUTPUT = Boolean.parseBoolean(
-      Config.get("generate.birthweights.logging", "false"));
+  private static final boolean LOG_OUTPUT = 
+      Config.getAsBoolean("generate.birthweights.logging", false);
   private static FileWriter OUTPUT = openFile();
 
   private static FileWriter openFile() {
@@ -104,7 +104,7 @@ public class BirthStatistics {
     if (mother.attributes.containsKey(BIRTH_SEX)) {
       babySex = (String) mother.attributes.get(BIRTH_SEX);
     } else {
-      if (mother.random.nextBoolean()) {
+      if (mother.randBoolean()) {
         babySex = "M";
       } else {
         babySex = "F";
@@ -210,8 +210,7 @@ public class BirthStatistics {
    * @return True if the mother is hispanic, otherwise false.
    */
   private static boolean isHispanic(Person mother) {
-    String race = (String) mother.attributes.get(Person.RACE);
     String ethnicity = (String) mother.attributes.get(Person.ETHNICITY);
-    return (race.equalsIgnoreCase("hispanic") || ethnicity.equalsIgnoreCase("hispanic"));
+    return (ethnicity.equalsIgnoreCase("hispanic"));
   }
 }

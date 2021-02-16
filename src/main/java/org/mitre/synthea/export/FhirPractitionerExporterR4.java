@@ -21,22 +21,24 @@ import org.hl7.fhir.r4.model.Bundle.BundleType;
 import org.hl7.fhir.r4.model.IntegerType;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.mitre.synthea.helpers.Config;
+import org.mitre.synthea.helpers.RandomNumberGenerator;
 import org.mitre.synthea.world.agents.Clinician;
 import org.mitre.synthea.world.agents.Provider;
 
 public abstract class FhirPractitionerExporterR4 {
 
-  private static final FhirContext FHIR_CTX = FhirContext.forR4();
-
   private static final String EXTENSION_URI = 
       "http://synthetichealth.github.io/synthea/utilization-encounters-extension";
 
-  public static void export(long stop) {
-    if (Boolean.parseBoolean(Config.get("exporter.practitioner.fhir.export"))) {
+  /**
+   * Export the practitioner in FHIR R4 format.
+   */
+  public static void export(RandomNumberGenerator rand, long stop) {
+    if (Config.getAsBoolean("exporter.practitioner.fhir.export")) {
 
       Bundle bundle = new Bundle();
-      if (Boolean.parseBoolean(Config.get("exporter.fhir.transaction_bundle"))) {
-        bundle.setType(BundleType.TRANSACTION);
+      if (Config.getAsBoolean("exporter.fhir.transaction_bundle")) {
+        bundle.setType(BundleType.BATCH);
       } else {
         bundle.setType(BundleType.COLLECTION);
       }
@@ -52,7 +54,7 @@ public abstract class FhirPractitionerExporterR4 {
             ArrayList<Clinician> docs = clinicians.get(specialty);
             for (Clinician doc : docs) {
               if (doc.getEncounterCount() > 0) {
-                BundleEntryComponent entry = FhirR4.practitioner(bundle, doc);
+                BundleEntryComponent entry = FhirR4.practitioner(rand, bundle, doc);
                 Practitioner practitioner = (Practitioner) entry.getResource();
                 practitioner.addExtension()
                   .setUrl(EXTENSION_URI)
@@ -63,7 +65,7 @@ public abstract class FhirPractitionerExporterR4 {
         }
       }
 
-      String bundleJson = FHIR_CTX.newJsonParser().setPrettyPrint(true)
+      String bundleJson = FhirR4.getContext().newJsonParser().setPrettyPrint(true)
           .encodeResourceToString(bundle);
 
       // get output folder

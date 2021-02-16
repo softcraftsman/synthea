@@ -3,7 +3,10 @@ package org.mitre.synthea.world.geography;
 import com.google.common.collect.Table;
 import com.google.gson.Gson;
 
+import java.awt.geom.Point2D;
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -11,17 +14,19 @@ import java.util.Map;
 import java.util.Random;
 
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.sis.geometry.DirectPosition2D;
 import org.mitre.synthea.helpers.Config;
+import org.mitre.synthea.helpers.RandomNumberGenerator;
 import org.mitre.synthea.helpers.SimpleCSV;
 import org.mitre.synthea.helpers.Utilities;
 import org.mitre.synthea.world.agents.Clinician;
 import org.mitre.synthea.world.agents.Person;
 
-public class Location {
+public class Location implements Serializable {
+  private static final long serialVersionUID = 1L;
   private static LinkedHashMap<String, String> stateAbbreviations = loadAbbreviations();
   private static Map<String, String> timezones = loadTimezones();
   private static Map<String, List<String>> foreignPlacesOfBirth = loadCitiesByLanguage();
+  private static final String COUNTRY_CODE = Config.get("generate.geography.country_code");
 
   private long totalPopulation;
 
@@ -52,7 +57,9 @@ public class Location {
       
       // this still works even if only 1 city given,
       // because allDemographics will only contain that 1 city
-      this.demographics = allDemographics.row(state);
+      // we copy the Map returned by the Google Table.row since the implementing
+      // class is not serializable
+      this.demographics = new HashMap<String, Demographics>(allDemographics.row(state));
 
       if (city != null 
           && demographics.values().stream().noneMatch(d -> d.city.equalsIgnoreCase(city))) {
@@ -62,8 +69,13 @@ public class Location {
       long runningPopulation = 0;
       // linked to ensure consistent iteration order
       populationByCity = new LinkedHashMap<>();
-      populationByCityId = new LinkedHashMap<>();      
-      for (Demographics d : this.demographics.values()) {
+      populationByCityId = new LinkedHashMap<>();
+      // sort the demographics to ensure tests pass regardless of implementing class
+      // for this.demographics, see comment above on non-serializability of Google Table.row
+      ArrayList<Demographics> sortedDemographics =
+          new ArrayList<Demographics>(this.demographics.values());
+      Collections.sort(sortedDemographics);
+      for (Demographics d : sortedDemographics) {
         long pop = d.population;
         runningPopulation += pop;
         if (populationByCity.containsKey(d.city)) {
@@ -113,21 +125,42 @@ public class Location {
    * If a city has more than one zip code, this picks a random one.
    * 
    * @param cityName Name of the city
+   * @param random Used for a source of repeatable randomness when selecting
+   *               a zipcode when multiple exist for a location
    * @return a zip code for the given city
    */
-  public String getZipCode(String cityName) {
+  public String getZipCode(String cityName, RandomNumberGenerator random) {
+    List<String> zipsForCity = getZipCodes(cityName);
+    if (zipsForCity.size() > 1) {
+      int randomChoice = random.randInt(zipsForCity.size());
+      return zipsForCity.get(randomChoice);
+    } else {
+      return zipsForCity.get(0);
+    }
+  }
+
+  /**
+   * Get the list of zip codes (or postal codes) by city name.
+   * @param cityName Name of the city.
+   * @return List of legal zip codes or postal codes.
+   */
+  public List<String> getZipCodes(String cityName) {
+    List<String> results = new ArrayList<String>();
     List<Place> zipsForCity = zipCodes.get(cityName);
-    
+
     if (zipsForCity == null) {
       zipsForCity = zipCodes.get(cityName + " Town");
     }
-    
+
     if (zipsForCity == null || zipsForCity.isEmpty()) {
-      return "00000"; // if we don't have the city, just use a dummy
+      results.add("00000"); // if we don't have the city, just use a dummy
     } else if (zipsForCity.size() >= 1) {
-      return zipsForCity.get(0).postalCode;
+      for (Place place : zipsForCity) {
+        results.add(place.postalCode);
+      }
     }
-    return "00000";
+
+    return results;
   }
 
   public long getPopulation(String cityName) {
@@ -138,7 +171,25 @@ public class Location {
    * Pick the name of a random city from the current "world".
    * If only one city was selected, this will return that one city.
    * 
-   * @param random Source of randomness
+   * @param random The source of randomness.
+   * @return Demographics of a random city.
+   */
+  public Demographics randomCity(RandomNumberGenerator random) {
+    if (city != null) {
+      // if we're only generating one city at a time, just use the largest entry for that one city
+      if (fixedCity == null) {
+        fixedCity = demographics.values().stream()
+          .filter(d -> d.city.equalsIgnoreCase(city))
+          .sorted().findFirst().get();
+      }
+      return fixedCity;
+    }
+    return demographics.get(randomCityId(random));
+  }
+
+  /**
+   * Pick the name of a random city from the current "world".
+   * @param random The source of randomness.
    * @return Demographics of a random city.
    */
   public Demographics randomCity(Random random) {
@@ -153,22 +204,37 @@ public class Location {
     }
     return demographics.get(randomCityId(random));
   }
-  
+
   /**
    * Pick a random city name, weighted by population.
-   * @param random Source of randomness
+   * @param random the source of randomness
    * @return a city name
    */
-  public String randomCityName(Random random) {
+  public String randomCityName(RandomNumberGenerator random) {
     String cityId = randomCityId(random);
     return demographics.get(cityId).city;
   }
 
   /**
    * Pick a random city id, weighted by population.
-   * @param random Source of randomness
+   * @param random the source of randomness
    * @return a city id
    */
+  private String randomCityId(RandomNumberGenerator random) {
+    long targetPop = (long) (random.rand() * totalPopulation);
+
+    for (Map.Entry<String, Long> city : populationByCityId.entrySet()) {
+      targetPop -= city.getValue();
+
+      if (targetPop < 0) {
+        return city.getKey();
+      }
+    }
+
+    // should never happen
+    throw new RuntimeException("Unable to select a random city id.");
+  }  
+  
   private String randomCityId(Random random) {
     long targetPop = (long) (random.nextDouble() * totalPopulation);
 
@@ -186,35 +252,35 @@ public class Location {
 
   /**
    * Pick a random birth place, weighted by population.
-   * @param random Source of randomness
+   * @param random the source of randomness
    * @return Array of Strings: [city, state, country, "city, state, country"]
    */
-  public String[] randomBirthPlace(Random random) {
+  public String[] randomBirthPlace(RandomNumberGenerator random) {
     String[] birthPlace = new String[4];
     birthPlace[0] = randomCityName(random);
     birthPlace[1] = this.state;
-    birthPlace[2] = "US";
+    birthPlace[2] = COUNTRY_CODE;
     birthPlace[3] = birthPlace[0] + ", " + birthPlace[1] + ", " + birthPlace[2];
     return birthPlace;
   }
 
   /**
    * Method which returns a city from the foreignPlacesOfBirth map if the map contains values
-   * for an ethnicity.
-   * In the case an ethnicity is not present the method returns the value from a call to
+   * for an language.
+   * In the case an language is not present the method returns the value from a call to
    * randomCityName().
    *
-   * @param random the Random to base our city selection on
-   * @param ethnicity the ethnicity to look for cities in
+   * @param random the source of randomness
+   * @param language the language to look for cities in
    * @return A String representing the place of birth
    */
-  public String[] randomBirthplaceByEthnicity(Random random, String ethnicity) {
+  public String[] randomBirthplaceByLanguage(RandomNumberGenerator random, String language) {
     String[] birthPlace;
 
-    List<String> cities = foreignPlacesOfBirth.get(ethnicity.toLowerCase());
+    List<String> cities = foreignPlacesOfBirth.get(language.toLowerCase());
     if (cities != null && cities.size() > 0) {
       int upperBound = cities.size();
-      String randomBirthPlace = cities.get(random.nextInt(upperBound));
+      String randomBirthPlace = cities.get(random.randInt(upperBound));
       String[] split = randomBirthPlace.split(",");
 
       // make sure we have exactly 3 elements (city, state, country_abbr)
@@ -243,7 +309,7 @@ public class Location {
    * @param cityName Name of the city, or null to choose one randomly
    */
   public void assignPoint(Person person, String cityName) {
-    List<Place> zipsForCity = null;
+    List<Place> zipsForCity;
 
     if (cityName == null) {
       int size = zipCodes.keySet().size();
@@ -255,17 +321,25 @@ public class Location {
       zipsForCity = zipCodes.get(cityName + " Town");
     }
     
-    Place place = null;
+    Place place;
     if (zipsForCity.size() == 1) {
       place = zipsForCity.get(0);
     } else {
-      // pick a random one
-      place = zipsForCity.get(person.randInt(zipsForCity.size()));
+      String personZip = (String) person.attributes.get(Person.ZIP);
+      if (personZip == null) {
+        place = zipsForCity.get(person.randInt(zipsForCity.size()));
+      } else {
+        place = zipsForCity.stream()
+            .filter(c -> personZip.equals(c.postalCode))
+            .findFirst()
+            .orElse(zipsForCity.get(person.randInt(zipsForCity.size())));
+      }
     }
     
     if (place != null) {
       // Get the coordinate of the city/town
-      DirectPosition2D coordinate = place.getLatLon().clone();
+      Point2D.Double coordinate = new Point2D.Double();
+      coordinate.setLocation(place.coordinate);
       // And now perturbate it slightly.
       // Precision within 0.001 degree is more or less a neighborhood or street.
       // Precision within 0.01 is a village or town
@@ -308,13 +382,14 @@ public class Location {
     
     if (place != null) {
       // Get the coordinate of the city/town
-      DirectPosition2D coordinate = place.getLatLon().clone();
+      Point2D.Double coordinate = new Point2D.Double();
+      coordinate.setLocation(place.coordinate);
       // And now perturbate it slightly.
       // Precision within 0.001 degree is more or less a neighborhood or street.
       // Precision within 0.01 is a village or town
       // Precision within 0.1 is a large city
-      double dx = clinician.rand() / 10.0;
-      double dy = clinician.rand() / 10.0;
+      double dx = (clinician.rand() * 0.1) - 0.05;
+      double dy = (clinician.rand() * 0.1) - 0.05;
       coordinate.setLocation(coordinate.x + dx, coordinate.y + dy);
       clinician.attributes.put(Person.COORDINATE, coordinate);
     }

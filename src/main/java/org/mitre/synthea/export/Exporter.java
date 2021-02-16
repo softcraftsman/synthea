@@ -12,14 +12,19 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Predicate;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 
 import org.mitre.synthea.engine.Generator;
 import org.mitre.synthea.helpers.Config;
 import org.mitre.synthea.helpers.Utilities;
+import org.mitre.synthea.input.FixedRecord;
+import org.mitre.synthea.input.FixedRecordGroup;
 import org.mitre.synthea.modules.DeathModule;
 import org.mitre.synthea.world.agents.Person;
 import org.mitre.synthea.world.concepts.HealthRecord;
@@ -37,18 +42,35 @@ public abstract class Exporter {
     STU3,
     R4
   }
-   
+  
+  private static final List<Pair<Person, Long>> deferredExports = 
+          Collections.synchronizedList(new LinkedList<>());
+
   /**
    * Runtime configuration of the record exporter.
    */
   public static class ExporterRuntimeOptions {
     
     public int yearsOfHistory;
+    public boolean deferExports = false;
+    public boolean terminologyService =
+        !Config.get("generate.terminology_service_url", "").isEmpty();
     private BlockingQueue<String> recordQueue;
     private SupportedFhirVersion fhirVersion;
     
     public ExporterRuntimeOptions() {
       yearsOfHistory = Integer.parseInt(Config.get("exporter.years_of_history"));
+    }
+    
+    /**
+     * Copy constructor.
+     */
+    public ExporterRuntimeOptions(ExporterRuntimeOptions init) {
+      yearsOfHistory = init.yearsOfHistory;
+      deferExports = init.deferExports;
+      terminologyService = init.terminologyService;
+      recordQueue = init.recordQueue;
+      fhirVersion = init.fhirVersion;
     }
     
     /**
@@ -69,7 +91,7 @@ public abstract class Exporter {
     }
 
     /**
-     * Returns the newest generated patient record (in FHIR STU 3 JSON format) 
+     * Returns the newest generated patient record 
      * or blocks until next record becomes available.
      * Returns null if the generator does not have a record queue.
      */
@@ -97,28 +119,42 @@ public abstract class Exporter {
    * @param options Runtime exporter options
    */
   public static void export(Person person, long stopTime, ExporterRuntimeOptions options) {
-    int yearsOfHistory = Integer.parseInt(Config.get("exporter.years_of_history"));
-    if (yearsOfHistory > 0) {
-      person = filterForExport(person, yearsOfHistory, stopTime);
-    }
-    if (!person.alive(stopTime)) {
-      filterAfterDeath(person);
-    }
-    if (person.hasMultipleRecords) {
-      int i = 0;
-      for (String key : person.records.keySet()) {
-        person.record = person.records.get(key);
-        exportRecord(person, Integer.toString(i), stopTime, options);
-        i++;
-      }
+    if (options.deferExports) {
+      deferredExports.add(new ImmutablePair<Person, Long>(person, stopTime));
     } else {
-      exportRecord(person, "", stopTime, options);
+      int yearsOfHistory = Integer.parseInt(Config.get("exporter.years_of_history"));
+      if (yearsOfHistory > 0) {
+        person = filterForExport(person, yearsOfHistory, stopTime);
+      }
+      if (!person.alive(stopTime)) {
+        filterAfterDeath(person);
+      }
+      if (person.hasMultipleRecords) {
+        int i = 0;
+        for (String key : person.records.keySet()) {
+          person.record = person.records.get(key);
+          // If the person fixed Records, overwrite their attributes from the fixed records.
+          if (person.attributes.get(Person.RECORD_GROUP) != null) {
+            FixedRecordGroup rg = (FixedRecordGroup) person.attributes.get(Person.RECORD_GROUP);
+            int recordToPull = i;
+            if (recordToPull >= rg.count) {
+              recordToPull = rg.count - 1;
+            }
+            FixedRecord fr = rg.records.get(recordToPull);
+            fr.totalOverwrite(person);
+          }
+          exportRecord(person, Integer.toString(i), stopTime, options);
+          i++;
+        }
+      } else {
+        exportRecord(person, "", stopTime, options);
+      }
     }
   }
   
   /**
    * Export a single patient, into all the formats supported. (Formats may be enabled or disabled by
-   * configuration)
+   * configuration). This method variant is only currently used by test classes.
    *
    * @param person   Patient to export
    * @param stopTime Time at which the simulation stopped
@@ -138,12 +174,17 @@ public abstract class Exporter {
    */
   private static void exportRecord(Person person, String fileTag, long stopTime,
           ExporterRuntimeOptions options) {
+    if (options.terminologyService) {
+      // Resolve any coded values within the record that are specified using a ValueSet URI.
+      ValueSetCodeResolver valueSetCodeResolver = new ValueSetCodeResolver(person);
+      valueSetCodeResolver.resolve();
+    }
 
-    if (Boolean.parseBoolean(Config.get("exporter.fhir_stu3.export"))) {
+    if (Config.getAsBoolean("exporter.fhir_stu3.export")) {
       File outDirectory = getOutputFolder("fhir_stu3", person);
-      if (Boolean.parseBoolean(Config.get("exporter.fhir.bulk_data"))) {
+      if (Config.getAsBoolean("exporter.fhir.bulk_data")) {
         org.hl7.fhir.dstu3.model.Bundle bundle = FhirStu3.convertToFHIR(person, stopTime);
-        IParser parser = FhirContext.forDstu3().newJsonParser().setPrettyPrint(false);
+        IParser parser = FhirStu3.getContext().newJsonParser().setPrettyPrint(false);
         for (org.hl7.fhir.dstu3.model.Bundle.BundleEntryComponent entry : bundle.getEntry()) {
           String filename = entry.getResource().getResourceType().toString() + ".ndjson";
           Path outFilePath = outDirectory.toPath().resolve(filename);
@@ -156,11 +197,11 @@ public abstract class Exporter {
         writeNewFile(outFilePath, bundleJson);
       }
     }
-    if (Boolean.parseBoolean(Config.get("exporter.fhir_dstu2.export"))) {
+    if (Config.getAsBoolean("exporter.fhir_dstu2.export")) {
       File outDirectory = getOutputFolder("fhir_dstu2", person);
-      if (Boolean.parseBoolean(Config.get("exporter.fhir.bulk_data"))) {
+      if (Config.getAsBoolean("exporter.fhir.bulk_data")) {
         ca.uhn.fhir.model.dstu2.resource.Bundle bundle = FhirDstu2.convertToFHIR(person, stopTime);
-        IParser parser = FhirContext.forDstu2().newJsonParser().setPrettyPrint(false);
+        IParser parser = FhirDstu2.getContext().newJsonParser().setPrettyPrint(false);
         for (ca.uhn.fhir.model.dstu2.resource.Bundle.Entry entry : bundle.getEntry()) {
           String filename = entry.getResource().getResourceName() + ".ndjson";
           Path outFilePath = outDirectory.toPath().resolve(filename);
@@ -173,11 +214,11 @@ public abstract class Exporter {
         writeNewFile(outFilePath, bundleJson);
       }
     }
-    if (Boolean.parseBoolean(Config.get("exporter.fhir.export"))) {
+    if (Config.getAsBoolean("exporter.fhir.export")) {
       File outDirectory = getOutputFolder("fhir", person);
-      if (Boolean.parseBoolean(Config.get("exporter.fhir.bulk_data"))) {
+      if (Config.getAsBoolean("exporter.fhir.bulk_data")) {
         org.hl7.fhir.r4.model.Bundle bundle = FhirR4.convertToFHIR(person, stopTime);
-        IParser parser = FhirContext.forR4().newJsonParser().setPrettyPrint(false);
+        IParser parser = FhirR4.getContext().newJsonParser().setPrettyPrint(false);
         for (org.hl7.fhir.r4.model.Bundle.BundleEntryComponent entry : bundle.getEntry()) {
           String filename = entry.getResource().getResourceType().toString() + ".ndjson";
           Path outFilePath = outDirectory.toPath().resolve(filename);
@@ -189,42 +230,64 @@ public abstract class Exporter {
         Path outFilePath = outDirectory.toPath().resolve(filename(person, fileTag, "json"));
         writeNewFile(outFilePath, bundleJson);
       }
+      FhirGroupExporterR4.addPatient((String) person.attributes.get(Person.ID));
     }
-    if (Boolean.parseBoolean(Config.get("exporter.ccda.export"))) {
+    if (Config.getAsBoolean("exporter.ccda.export")) {
       String ccdaXml = CCDAExporter.export(person, stopTime);
       File outDirectory = getOutputFolder("ccda", person);
       Path outFilePath = outDirectory.toPath().resolve(filename(person, fileTag, "xml"));
       writeNewFile(outFilePath, ccdaXml);
     }
-    if (Boolean.parseBoolean(Config.get("exporter.csv.export"))) {
+    if (Config.getAsBoolean("exporter.csv.export")) {
       try {
         CSVExporter.getInstance().export(person, stopTime);
       } catch (IOException e) {
         e.printStackTrace();
       }
     }
-    if (Boolean.parseBoolean(Config.get("exporter.text.export"))) {
+    if (Config.getAsBoolean("exporter.cpcds.export")) {
+      try {
+        CPCDSExporter.getInstance().export(person, stopTime);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+    if (Config.getAsBoolean("exporter.text.export")) {
       try {
         TextExporter.exportAll(person, fileTag, stopTime);
       } catch (IOException e) {
         e.printStackTrace();
       }
     }
-    if (Boolean.parseBoolean(Config.get("exporter.text.per_encounter_export"))) {
+    if (Config.getAsBoolean("exporter.text.per_encounter_export")) {
       try {
         TextExporter.exportEncounter(person, stopTime);
       } catch (IOException e) {
         e.printStackTrace();
       }
     }
-    if (Boolean.parseBoolean(Config.get("exporter.cdw.export"))) {
+    if (Config.getAsBoolean("exporter.symptoms.csv.export")) {
+      try {
+        SymptomCSVExporter.getInstance().export(person, stopTime);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+    if (Config.getAsBoolean("exporter.symptoms.text.export")) {
+      try {
+        SymptomTextExporter.exportAll(person, fileTag, stopTime);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+    if (Config.getAsBoolean("exporter.cdw.export")) {
       try {
         CDWExporter.getInstance().export(person, stopTime);
       } catch (IOException e) {
         e.printStackTrace();
       }
     }
-    if (Boolean.parseBoolean(Config.get("exporter.clinical_note.export"))) {
+    if (Config.getAsBoolean("exporter.clinical_note.export")) {
       File outDirectory = getOutputFolder("notes", person);
       Path outFilePath = outDirectory.toPath().resolve(filename(person, fileTag, "txt"));
       String consolidatedNotes = ClinicalNoteExporter.export(person);
@@ -292,16 +355,44 @@ public abstract class Exporter {
    * @param generator Generator that generated the patients
    */
   public static void runPostCompletionExports(Generator generator) {
+    runPostCompletionExports(generator, new ExporterRuntimeOptions());
+  }
+  
+  /**
+   * Run any exporters that require the full dataset to be generated prior to exporting.
+   * (E.g., an aggregate statistical exporter)
+   *
+   * @param generator Generator that generated the patients
+   */
+  public static void runPostCompletionExports(Generator generator, ExporterRuntimeOptions options) {
+    
+    if (options.deferExports) {
+      ExporterRuntimeOptions nonDeferredOptions = new ExporterRuntimeOptions(options);
+      nonDeferredOptions.deferExports = false;
+      for (Pair<Person, Long> entry: deferredExports) {
+        export(entry.getLeft(), entry.getRight(), nonDeferredOptions);
+      }
+      deferredExports.clear();
+    }
+    
     String bulk = Config.get("exporter.fhir.bulk_data");
+
+    // Before we force bulk data to be off...
+    try {
+      FhirGroupExporterR4.exportAndSave(generator, generator.stop);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
     Config.set("exporter.fhir.bulk_data", "false");
     try {
-      HospitalExporterR4.export(generator.stop);
+      HospitalExporterR4.export(generator, generator.stop);
     } catch (Exception e) {
       e.printStackTrace();
     }
 
     try {
-      FhirPractitionerExporterR4.export(generator.stop);
+      FhirPractitionerExporterR4.export(generator, generator.stop);
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -331,11 +422,11 @@ public abstract class Exporter {
     }
     Config.set("exporter.fhir.bulk_data", bulk);
 
-    if (Boolean.parseBoolean(Config.get("exporter.cost_access_outcomes_report"))) {
+    if (Config.getAsBoolean("exporter.cost_access_outcomes_report")) {
       ReportExporter.export(generator);
     }
 
-    if (Boolean.parseBoolean(Config.get("exporter.prevalence_report"))) {
+    if (Config.getAsBoolean("exporter.prevalence_report")) {
       try {
         PrevalenceReport.export(generator);
       } catch (Exception e) {
@@ -344,7 +435,7 @@ public abstract class Exporter {
       }
     }
 
-    if (Boolean.parseBoolean(Config.get("exporter.custom_report"))) {
+    if (Config.getAsBoolean("exporter.custom_report")) {
       try {
         CustomSqlReport.export(generator);
       } catch (Exception e) {
@@ -353,11 +444,11 @@ public abstract class Exporter {
       }
     }
 
-    if (Boolean.parseBoolean(Config.get("exporter.cdw.export"))) {
+    if (Config.getAsBoolean("exporter.cdw.export")) {
       CDWExporter.getInstance().writeFactTables();
     }
 
-    if (Boolean.parseBoolean(Config.get("exporter.csv.export"))) {
+    if (Config.getAsBoolean("exporter.csv.export")) {
       try {
         CSVExporter.getInstance().exportOrganizationsAndProviders();
         CSVExporter.getInstance().exportPayers();
@@ -537,7 +628,8 @@ public abstract class Exporter {
         Iterator<Encounter> iter = record.encounters.iterator();
         while (iter.hasNext()) {
           Encounter encounter = iter.next();
-          if (encounter.start > deathTime) {
+          if (encounter.start > deathTime
+              && !encounter.codes.contains(DeathModule.DEATH_CERTIFICATION)) {
             iter.remove();
           }
         }
@@ -546,7 +638,8 @@ public abstract class Exporter {
       Iterator<Encounter> iter = person.record.encounters.iterator();
       while (iter.hasNext()) {
         Encounter encounter = iter.next();
-        if (encounter.start > deathTime) {
+        if (encounter.start > deathTime
+            && !encounter.codes.contains(DeathModule.DEATH_CERTIFICATION)) {
           iter.remove();
         }
       }
@@ -569,7 +662,7 @@ public abstract class Exporter {
     folders.add(folderName);
 
     if (person != null
-        && Boolean.parseBoolean(Config.get("exporter.subfolders_by_id_substring"))) {
+        && Config.getAsBoolean("exporter.subfolders_by_id_substring")) {
       String id = (String) person.attributes.get(Person.ID);
 
       folders.add(id.substring(0, 2));
@@ -594,7 +687,7 @@ public abstract class Exporter {
    * @return The filename only (not a path).
    */
   public static String filename(Person person, String tag, String extension) {
-    if (Boolean.parseBoolean(Config.get("exporter.use_uuid_filenames"))) {
+    if (Config.getAsBoolean("exporter.use_uuid_filenames")) {
       return person.attributes.get(Person.ID) + tag + "." + extension;
     } else {
       // ensure unique filenames for now

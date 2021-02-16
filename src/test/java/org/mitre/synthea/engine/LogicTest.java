@@ -47,15 +47,18 @@ public class LogicTest {
    */
   @Before
   public void setup() throws IOException {
+    Config.set("exporter.split_records", "false");
     person = new Person(0L);
+    // Give person an income to prevent null pointer.
+    person.attributes.put(Person.INCOME, 10000000);
     Provider mock = Mockito.mock(Provider.class);
-    mock.uuid = "Mock-Provider";
+    Mockito.when(mock.getResourceID()).thenReturn("Mock-Provider");
     for (EncounterType type : EncounterType.values()) {
       person.setProvider(type, mock);
     }
 
     mock = Mockito.mock(Provider.class);
-    mock.uuid = "Mock-Emergency";
+    Mockito.when(mock.getResourceID()).thenReturn("Mock-Emergency");
     person.setProvider(EncounterType.EMERGENCY, mock);
     person.attributes.put(Person.BIRTHDATE, 0L);
     time = System.currentTimeMillis();
@@ -66,7 +69,7 @@ public class LogicTest {
     Path modulesFolder = Paths.get("src/test/resources/generic");
     Path logicFile = modulesFolder.resolve("logic.json");
     JsonReader reader = new JsonReader(new FileReader(logicFile.toString()));
-    tests = new JsonParser().parse(reader).getAsJsonObject();
+    tests = JsonParser.parseReader(reader).getAsJsonObject();
     reader.close();
   }
 
@@ -197,42 +200,64 @@ public class LogicTest {
 
     person.attributes.remove(attribute);
     assertFalse(doTest("attributeEqualTo_TestValue_Test"));
+    assertFalse(doTest("attributeLt_String_Test"));
     assertTrue(doTest("attributeNilTest"));
     assertFalse(doTest("attributeNotNilTest"));
 
     person.attributes.put(attribute, "Wrong Value");
     assertFalse(doTest("attributeEqualTo_TestValue_Test"));
+    assertFalse(doTest("attributeLt_String_Test"));
     assertFalse(doTest("attributeNilTest"));
     assertTrue(doTest("attributeNotNilTest"));
 
     person.attributes.put(attribute, "TestValue");
     assertTrue(doTest("attributeEqualTo_TestValue_Test"));
+    assertTrue(doTest("attributeLt_String_Test"));
     assertFalse(doTest("attributeNilTest"));
     assertTrue(doTest("attributeNotNilTest"));
 
     person.attributes.put(attribute, 120);
-    assertFalse(doTest("attributeEqualTo_TestValue_Test"));
     assertTrue(doTest("attributeGt100Test"));
     assertFalse(doTest("attributeNilTest"));
     assertTrue(doTest("attributeNotNilTest"));
   }
 
+  @Test(expected = RuntimeException.class)
+  public void test_attribute_expected_numeric_exception() {
+    String attribute = "Test_Attribute_Key";
+    person.attributes.put(attribute, "TestValue");
+    doTest("attributeGt100Test");
+  }
+
+  @Test(expected = RuntimeException.class)
+  public void test_attribute_expected_string_exception() {
+    String attribute = "Test_Attribute_Key";
+    person.attributes.put(attribute, 120);
+    doTest("attributeEqualTo_TestValue_Test");
+  }
+
   @Test
   public void test_symptoms() {
-    person.setSymptom("Appendicitis", "PainLevel", 60, false);
+    person.setSymptom(
+        "Module1", "Appendicitis", "PainLevel", System.currentTimeMillis(), 60, false
+    );
     assertTrue(doTest("symptomPainLevelGt50"));
     assertTrue(doTest("symptomPainLevelLte80"));
 
     // painlevel still 60 here
-    person.setSymptom("Appendicitis", "LackOfAppetite", 100, false);
+    person.setSymptom(
+        "Module2", "Appendicitis", "LackOfAppetite", System.currentTimeMillis(), 100, false
+    );
     assertTrue(doTest("symptomPainLevelGt50"));
     assertTrue(doTest("symptomPainLevelLte80"));
 
-    person.setSymptom("Appendicitis", "PainLevel", 10, false);
+    person.setSymptom(
+        "Module1", "Appendicitis", "PainLevel", System.currentTimeMillis(), 10, false);
     assertFalse(doTest("symptomPainLevelGt50"));
     assertTrue(doTest("symptomPainLevelLte80"));
 
-    person.setSymptom("Appicitis", "PainLevel", 100, false);
+    person.setSymptom(
+        "Module3", "Appicitis", "PainLevel", System.currentTimeMillis(), 100, false);
     assertTrue(doTest("symptomPainLevelGt50"));
     assertFalse(doTest("symptomPainLevelLte80"));
   }
@@ -265,6 +290,8 @@ public class LogicTest {
     person.hasMultipleRecords = true;
     person.records = new ConcurrentHashMap<String, HealthRecord>();
     module.process(person, time);
+    long nextStep = time + Utilities.convertTime("days", 7);
+    module.process(person, nextStep);
     assertTrue(person.hasMultipleRecords);
     assertEquals(2, person.records.size());
     assertEquals(0, person.record.currentEncounter(time).conditions.size());
@@ -285,6 +312,9 @@ public class LogicTest {
     person.hasMultipleRecords = true;
     person.records = new ConcurrentHashMap<String, HealthRecord>();
     module.process(person, time);
+    long nextStep = time + Utilities.convertTime("days", 7);
+    module.process(person, nextStep);
+    person.record = person.records.get("Mock-Provider");
     assertTrue(person.hasMultipleRecords);
     assertEquals(2, person.records.size());
     assertEquals(1, person.record.currentEncounter(time).conditions.size());

@@ -3,6 +3,7 @@
 .project
 .settings
 .gradle
+/nbproject/**
 /build/**
 bin/**
 
@@ -10,6 +11,7 @@ bin/**
 /bin/
 
 /output/
+/out/
 
 # don't commit the autobuilt version file
 src/main/resources/version.txt
@@ -21,3 +23,8 @@ src/main/resources/version.txt
 # VS Code launch settings
 .vscode/launch.test.json
 .vscode/launch.json
+.vscode/settings.json
+/build/
+
+src/main/resources/map.json
+

@@ -16,17 +16,23 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.net.URL;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.junit.Test;
+import org.mitre.synthea.helpers.Utilities;
 import org.powermock.reflect.Whitebox;
 
 public class ModuleTest {
@@ -36,14 +42,123 @@ public class ModuleTest {
     List<Module> allModules = Module.getModules();
     List<Module> someModules = Module.getModules(path -> path.contains("ti"));
     
-    assertTrue(allModules.containsAll(someModules));
-    assertFalse(someModules.containsAll(allModules));
+    assertTrue(contains(allModules, someModules));
+    assertFalse(contains(someModules, allModules));
     assertTrue(allModules.size() > someModules.size());
     assertTrue(someModules.size() > 0);
 
     assertTrue(allModules.stream().anyMatch(filterOnModuleName("COPD")));
     assertTrue(someModules.stream().anyMatch(filterOnModuleName("Dermatitis")));
     assertFalse(someModules.stream().anyMatch(filterOnModuleName("COPD")));
+  }
+
+  /** Manually compare lists since the Modules are clones and not originals. */
+  private boolean contains(List<Module> superset, List<Module> subset) {
+    for (Module subsetModule : subset) {
+      boolean found = false;
+      for (Module supersetModule : superset) {
+        if (supersetModule.name.equals(subsetModule.name)
+            && supersetModule.submodule == subsetModule.submodule
+            && ((supersetModule.remarks == null && subsetModule.remarks == null)
+                || supersetModule.remarks.equals(subsetModule.remarks))) {
+          found = true;
+        }
+      }
+      if (!found) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Test
+  public void getModulesInPredictableOrder() {
+    List<Module> modulesA = Module.getModules();
+    List<Module> modulesB = Module.getModules();
+    
+    // verify with list
+    assertEquals(modulesA.size(), modulesB.size());
+    for (int i = 0; i < modulesA.size(); i++) {
+      assertEquals(modulesA.get(i).name, modulesB.get(i).name);
+      assertEquals(modulesA.get(i).submodule, modulesB.get(i).submodule);
+      assertEquals(modulesA.get(i).getStateNames(), modulesB.get(i).getStateNames());
+    }
+
+    // verify with iterator
+    Iterator<Module> iterA = modulesA.iterator();
+    Iterator<Module> iterB = modulesB.iterator();
+    while (iterA.hasNext()) {
+      Module modA = iterA.next();
+      Module modB = iterB.next();
+      assertEquals(modA.name, modB.name);
+      assertEquals(modA.submodule, modB.submodule);
+      assertEquals(modA.getStateNames(), modB.getStateNames());
+    }
+  }
+
+  @Test
+  public void getModulesInPredictableOrderThreadPool() {
+    ExecutorService threadPool = Executors.newFixedThreadPool(8);
+
+    List<Module> modules = Module.getModules();
+
+    for (int i = 0; i < 1000; i++) {
+      threadPool.submit(() -> {
+        List<Module> localModules = Module.getModules();
+        assertEquals(modules.size(), localModules.size());
+        for (int j = 0; j < modules.size(); j++) {
+          assertEquals(modules.get(j), localModules.get(j));
+        }
+      });
+    }
+
+    try {
+      threadPool.shutdown();
+      while (!threadPool.awaitTermination(30, TimeUnit.SECONDS)) {
+        System.out.println("Waiting for threads to finish... " + threadPool);
+      }
+    } catch (InterruptedException e) {
+      System.out.println("Test interrupted. Attempting to shut down associated thread pool.");
+      threadPool.shutdownNow();
+    }
+  }
+
+  @Test
+  public void getModulesInPredictableOrderWithRemoval() {
+    List<String> resultsA = new ArrayList<String>();
+    List<String> resultsB = new ArrayList<String>();
+
+    Random randA = new Random(9L);
+    Random randB = new Random(9L);
+
+    List<Module> modulesA = Module.getModules();
+    while (!modulesA.isEmpty()) {
+      Iterator<Module> iter = modulesA.iterator();
+      while (iter.hasNext()) {
+        Module mod = iter.next();
+        resultsA.add(mod.name);
+        if (randA.nextDouble() < 0.1) {
+          iter.remove();
+        }
+      }
+    }
+    
+    List<Module> modulesB = Module.getModules();
+    while (!modulesB.isEmpty()) {
+      Iterator<Module> iter = modulesB.iterator();
+      while (iter.hasNext()) {
+        Module mod = iter.next();
+        resultsB.add(mod.name);
+        if (randB.nextDouble() < 0.1) {
+          iter.remove();
+        }
+      }
+    }
+
+    assertEquals(resultsA.size(), resultsB.size());
+    for (int i = 0; i < resultsA.size(); i++) {
+      assertEquals(resultsA.get(i), resultsB.get(i));
+    }
   }
 
   @Test
@@ -57,7 +172,6 @@ public class ModuleTest {
   public void addLocalModules() {
     Module.addModules(new File("src/test/resources/module"));
     List<Module> allModules = Module.getModules();
-    allModules = Module.getModules();
     assertTrue(allModules.stream().filter(filterOnModuleName("COPD_TEST")).count() == 1);
   }
 
@@ -71,6 +185,23 @@ public class ModuleTest {
       assertSame(fault, e.getCause());
     }
     Module.getModuleByPath("bad_module"); // should not fail now
+  }
+
+  @Test
+  public void rejectModulesFromFutureVersions() throws Exception {
+    try {
+      String jsonString = Files.readAllLines(Paths.get("src", "test",
+          "resources", "future_module", "module_from_the_future.json"))
+          .stream()
+          .collect(Collectors.joining("\n"));
+      JsonObject object = JsonParser.parseString(jsonString).getAsJsonObject();
+      new Module(object, false);
+      // Should never get here
+      fail("Didn't throw exception when loading module with version from the future");
+    } catch (IllegalStateException ise) {
+      assertTrue(ise.getMessage()
+          .startsWith("Allergies... FROM THE FUTURE!!!! Module specifies GMF version"));
+    }
   }
 
   @Test
@@ -134,33 +265,25 @@ public class ModuleTest {
    */
   @Test
   public void targetEncounters() throws Exception {
-    URL modulesFolder = ClassLoader.getSystemClassLoader().getResource("modules");
-    Path path = Paths.get(modulesFolder.toURI());
-
-    Files.walk(path, Integer.MAX_VALUE)
-        .filter(Files::isReadable)
-        .filter(Files::isRegularFile)
-        .filter(p -> p.toString().endsWith(".json"))
-        .forEach(t -> {
-          try {
-            FileReader fileReader = new FileReader(t.toString());
-            JsonReader reader = new JsonReader(fileReader);
-            JsonParser parser = new JsonParser();
-            JsonObject object = parser.parse(reader).getAsJsonObject();
-            JsonObject states = object.getAsJsonObject("states");
-            for (String stateName : states.keySet()) {
-              JsonObject state = states.getAsJsonObject(stateName);
-              if (state.has("target_encounter")) {
-                String type = state.get("type").getAsString();
-                if (!type.endsWith("Onset")) {
-                  System.err.println(t.toString() + " => " + stateName + "(" + type + ")");
-                }
-                assertTrue(type.endsWith("Onset"));
-              }
+    Utilities.walkAllModules((modulesFolder, t) -> {
+      try {
+        FileReader fileReader = new FileReader(t.toString());
+        JsonReader reader = new JsonReader(fileReader);
+        JsonObject object = JsonParser.parseReader(reader).getAsJsonObject();
+        JsonObject states = object.getAsJsonObject("states");
+        for (String stateName : states.keySet()) {
+          JsonObject state = states.getAsJsonObject(stateName);
+          if (state.has("target_encounter")) {
+            String type = state.get("type").getAsString();
+            if (!type.endsWith("Onset")) {
+              System.err.println(t.toString() + " => " + stateName + "(" + type + ")");
             }
-          } catch (Exception e) {
-            fail(e.getMessage());
+            assertTrue(type.endsWith("Onset"));
           }
-        });
+        }
+      } catch (Exception e) {
+        fail(e.getMessage());
+      }
+    });
   }
 }

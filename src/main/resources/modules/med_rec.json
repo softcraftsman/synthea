@@ -22,7 +22,7 @@
         },
         {
           "distribution": 0.55,
-          "transition": "Initial"
+          "transition": "End_Wellness_Encounter"
         }
       ]
     },
@@ -35,7 +35,12 @@
           "display": "Medication Reconciliation (procedure)"
         }
       ],
+      "direct_transition": "End_Wellness_Encounter"
+    },
+    "End_Wellness_Encounter": {
+      "type": "EncounterEnd",
       "direct_transition": "Initial"
     }
-  }
+  },
+  "gmf_version": 1
 }

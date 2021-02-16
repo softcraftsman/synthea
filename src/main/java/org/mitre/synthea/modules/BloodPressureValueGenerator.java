@@ -8,7 +8,7 @@ import org.mitre.synthea.world.concepts.BiometricsConfig;
 /**
  * Generate realistic blood pressure vital signs. 
  * Can reproducibly look a few days into the past and future.
- * 
+ * <p></p>
  * See <a href="https://raywinstead.com/bp/thrice.htm">https://raywinstead.com/bp/thrice.htm</a>
  * for desired result
  */
@@ -173,7 +173,14 @@ public class BloodPressureValueGenerator extends ValueGenerator {
     if (sysDias == SysDias.SYSTOLIC) {
       if (hypertension) {
         if (!bloodPressureControlled) {
-          return person.rand(HYPERTENSIVE_SYS_BP_RANGE);
+          double severe = person.rand();
+          if (severe <= 0.75) {
+            // this skews the distribution to be more on the lower side of the range
+            return person.rand(HYPERTENSIVE_SYS_BP_RANGE[0], HYPERTENSIVE_SYS_BP_RANGE[1]);
+          } else {
+            // this leaves fewer people at the upper end of the spectrum
+            return person.rand(HYPERTENSIVE_SYS_BP_RANGE[1], HYPERTENSIVE_SYS_BP_RANGE[2]);
+          }
         } else {
           return person.rand(NORMAL_SYS_BP_RANGE);
         }

@@ -22,20 +22,22 @@ import org.hl7.fhir.r4.model.IntegerType;
 import org.hl7.fhir.r4.model.Organization;
 
 import org.mitre.synthea.helpers.Config;
+import org.mitre.synthea.helpers.RandomNumberGenerator;
 import org.mitre.synthea.world.agents.Provider;
 
 public abstract class HospitalExporterR4 {
 
-  private static final FhirContext FHIR_CTX = FhirContext.forR4();
-
   private static final String SYNTHEA_URI = "http://synthetichealth.github.io/synthea/";
 
-  public static void export(long stop) {
-    if (Boolean.parseBoolean(Config.get("exporter.hospital.fhir.export"))) {
+  /**
+   * Export the hospital in FHIR R4 format.
+   */
+  public static void export(RandomNumberGenerator rand, long stop) {
+    if (Config.getAsBoolean("exporter.hospital.fhir.export")) {
 
       Bundle bundle = new Bundle();
-      if (Boolean.parseBoolean(Config.get("exporter.fhir.transaction_bundle"))) {
-        bundle.setType(BundleType.TRANSACTION);
+      if (Config.getAsBoolean("exporter.fhir.transaction_bundle")) {
+        bundle.setType(BundleType.BATCH);
       } else {
         bundle.setType(BundleType.COLLECTION);
       }
@@ -45,12 +47,12 @@ public abstract class HospitalExporterR4 {
         int totalEncounters = utilization.column(Provider.ENCOUNTERS).values().stream()
             .mapToInt(ai -> ai.get()).sum();
         if (totalEncounters > 0) {
-          BundleEntryComponent entry = FhirR4.provider(bundle, h);
+          BundleEntryComponent entry = FhirR4.provider(rand, bundle, h);
           addHospitalExtensions(h, (Organization) entry.getResource());
         }
       }
 
-      String bundleJson = FHIR_CTX.newJsonParser().setPrettyPrint(true)
+      String bundleJson = FhirR4.getContext().newJsonParser().setPrettyPrint(true)
           .encodeResourceToString(bundle);
 
       // get output folder
@@ -69,6 +71,9 @@ public abstract class HospitalExporterR4 {
     }
   }
 
+  /**
+   * Add FHIR extensions to capture additional information.
+   */
   public static void addHospitalExtensions(Provider h, Organization organizationResource) {
     Table<Integer, String, AtomicInteger> utilization = h.getUtilization();
     // calculate totals for utilization

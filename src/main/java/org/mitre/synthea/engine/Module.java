@@ -3,10 +3,18 @@ package org.mitre.synthea.engine;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.jayway.jsonpath.Configuration;
+import com.jayway.jsonpath.DocumentContext;
+import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.spi.json.GsonJsonProvider;
+import com.jayway.jsonpath.spi.mapper.GsonMappingProvider;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,12 +28,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import org.mitre.synthea.helpers.Config;
 import org.mitre.synthea.helpers.Utilities;
 import org.mitre.synthea.modules.CardiovascularDiseaseModule;
 import org.mitre.synthea.modules.EncounterModule;
@@ -42,7 +52,14 @@ import org.mitre.synthea.world.agents.Person;
  * across the population, it is important that States are cloned before they are executed. 
  * This keeps the "master" copy of the module clean.
  */
-public class Module {
+public class Module implements Cloneable, Serializable {
+
+  public static final Double GMF_VERSION = 1.0;
+
+  private static final Configuration JSON_PATH_CONFIG = Configuration.builder()
+      .jsonProvider(new GsonJsonProvider())
+      .mappingProvider(new GsonMappingProvider())
+      .build();
 
   private static final Map<String, ModuleSupplier> modules = loadModules();
   
@@ -56,11 +73,13 @@ public class Module {
     retVal.put("Quality Of Life", new ModuleSupplier(new QualityOfLifeModule()));
     retVal.put("Weight Loss", new ModuleSupplier(new WeightLossModule()));
 
+    Properties moduleOverrides = getModuleOverrides();
+
     try {
       URI modulesURI = Module.class.getClassLoader().getResource("modules").toURI();
       fixPathFromJar(modulesURI);
       Path modulesPath = Paths.get(modulesURI);
-      submoduleCount = walkModuleTree(modulesPath, retVal);
+      submoduleCount = walkModuleTree(modulesPath, retVal, moduleOverrides, false);
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -72,31 +91,57 @@ public class Module {
     return retVal;
   }
 
-  private static int walkModuleTree(Path modulesPath, Map<String, ModuleSupplier> retVal)
-          throws IOException {
+  private static Properties getModuleOverrides() {
+    String moduleOverrideFile = Config.get("module_override");
+    Properties overrides = null;
+    if (moduleOverrideFile != null && !moduleOverrideFile.trim().equals("")) {
+      try {
+        overrides = new Properties();
+        overrides.load(new FileReader(moduleOverrideFile));
+      } catch (IOException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+    }
+    return overrides;
+  }
+
+  private static int walkModuleTree(
+          Path modulesPath,
+          Map<String, ModuleSupplier> retVal, 
+          Properties overrides,
+          boolean localFiles)
+          throws Exception {
     AtomicInteger submoduleCount = new AtomicInteger();
     Path basePath = modulesPath.getParent();
-    Files.walk(modulesPath, Integer.MAX_VALUE)
-            .filter(Files::isReadable)
-            .filter(Files::isRegularFile)
-            .filter(p -> p.toString().endsWith(".json")).forEach(t -> {
-              String relativePath = relativePath(t, modulesPath);
-              boolean submodule = !t.getParent().equals(modulesPath);
-              if (submodule) {
-                submoduleCount.getAndIncrement();
-              }
-              retVal.put(relativePath, new ModuleSupplier(submodule,
-                  relativePath,
-                  () -> loadFile(basePath.relativize(t), submodule)));
-            });
+    Utilities.walkAllModules(modulesPath, t -> {
+      String relativePath = relativePath(t, modulesPath);
+      boolean submodule = !t.getParent().equals(modulesPath);
+      if (submodule) {
+        submoduleCount.getAndIncrement();
+      }
+      Path loadPath = localFiles ? t : basePath.relativize(t);
+      retVal.put(relativePath, new ModuleSupplier(submodule,
+          relativePath,
+          () -> loadFile(loadPath, submodule, overrides, localFiles)));
+    });
     return submoduleCount.get();
   }
-  
+
+  /**
+   * Recursively adds a folder or directory of module files to the static list
+   * of modules. This does not need to be executed by the core software. It only
+   * is used when the user wants to add another local module folder or during
+   * unit tests.
+   * @param dir - the folder or directory to add.
+   */
   public static void addModules(File dir) {
     int submoduleCount = 0;
     int originalModuleCount = modules.size();
+    Properties moduleOverrides = getModuleOverrides();
     try {
-      walkModuleTree(dir.toPath(), modules);
+      submoduleCount = walkModuleTree(dir.toPath().toAbsolutePath(), modules,
+              moduleOverrides, true);
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -104,7 +149,6 @@ public class Module {
     System.out.format("Scanned %d local modules and %d local submodules.\n", 
                       modules.size() - (originalModuleCount + submoduleCount), 
                       submoduleCount);
-
   }
 
   private static void fixPathFromJar(URI uri) throws IOException {
@@ -130,17 +174,39 @@ public class Module {
     return relativeFilePath;
   }
 
-  public static Module loadFile(Path path, Path modulesFolder) throws Exception {
+  public static Module loadFile(Path path, Path modulesFolder, Properties overrides)
+         throws Exception {
     boolean submodule = !path.getParent().equals(modulesFolder);
-    return loadFile(path, submodule);
+    return loadFile(path, submodule, overrides, false);
   }
 
-  private static Module loadFile(Path path, boolean submodule) throws Exception {
+  private static Module loadFile(Path path, boolean submodule, Properties overrides,
+          boolean localFiles) throws Exception {
     System.out.format("Loading %s %s\n", submodule ? "submodule" : "module", path.toString());
-    String jsonString = Utilities.readResource(path.toString());
-    JsonParser parser = new JsonParser();
-    JsonObject object = parser.parse(jsonString).getAsJsonObject();
+    String jsonString = localFiles
+            ? new String(Files.readAllBytes(path), StandardCharsets.UTF_8)
+            : Utilities.readResource(path.toString());
+    if (overrides != null) {
+      jsonString = applyOverrides(jsonString, overrides, path.getFileName().toString());
+    }
+    JsonObject object = JsonParser.parseString(jsonString).getAsJsonObject();
     return new Module(object, submodule);
+  }
+
+  private static String applyOverrides(String jsonString, Properties overrides,
+          String moduleFileName) {
+    DocumentContext ctx = JsonPath.using(JSON_PATH_CONFIG).parse(jsonString);
+    overrides.forEach((key, value) -> {
+      // use :: for the separator because filenames cannot contain :
+      String[] parts = ((String)key).split("::");
+      String module = parts[0];
+      if (module.equals(moduleFileName)) {
+        String jsonPath = parts[1];
+        Double numberValue = Double.parseDouble((String)value);
+        ctx.set(jsonPath, numberValue);
+      }
+    });
+    return ctx.jsonString();
   }
 
   public static String[] getModuleNames() {
@@ -187,6 +253,7 @@ public class Module {
 
   public String name;
   public boolean submodule;
+  public Double gmfVersion;
   public List<String> remarks;
   private Map<String, State> states;
 
@@ -202,6 +269,16 @@ public class Module {
    */
   public Module(JsonObject definition, boolean submodule) throws Exception {
     name = String.format("%s Module", definition.get("name").getAsString());
+
+    if (definition.has("gmf_version")) {
+      this.gmfVersion = definition.get("gmf_version").getAsDouble();
+      if (this.gmfVersion > GMF_VERSION) {
+        throw new IllegalStateException(String.format("%s specifies GMF version %f in JSON, "
+            + "which is beyond the known GMF version of %f",
+            this.name, this.gmfVersion, GMF_VERSION));
+      }
+    }
+
     this.submodule = submodule;
     remarks = new ArrayList<String>();
     if (definition.has("remarks")) {
@@ -217,6 +294,23 @@ public class Module {
       State state = State.build(this, entry.getKey(), entry.getValue().getAsJsonObject());
       states.put(entry.getKey(), state);
     }
+  }
+
+  /**
+   * Clone this module. Never provide the original.
+   */
+  public Module clone() {
+    Module clone = new Module();
+    clone.name = this.name;
+    clone.submodule = this.submodule;
+    clone.remarks = this.remarks;
+    if (this.states != null) {
+      clone.states = new ConcurrentHashMap<String, State>();
+      for (String key : this.states.keySet()) {
+        clone.states.put(key, this.states.get(key).clone());
+      }
+    }
+    return clone;
   }
 
   /**
@@ -275,9 +369,14 @@ public class Module {
   }
 
   private State initialState() {
-    return states.get("Initial"); // all Initial states have name Initial
+    return states.get("Initial").clone(); // all Initial states have name Initial
   }
 
+  /**
+   * Get a state by name.
+   * @param name - case-sensitive state name.
+   * @return State if it exists, otherwise null.
+   */
   public State getState(String name) {
     return states.get(name);
   }
@@ -353,7 +452,7 @@ public class Module {
       if (fault != null) {
         throw new RuntimeException(fault);
       }
-      return module;
+      return module.clone();
     }
   }
 }

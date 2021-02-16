@@ -9,10 +9,8 @@ import com.google.gson.stream.JsonReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -29,6 +27,7 @@ import org.mitre.synthea.modules.DeathModule;
 import org.mitre.synthea.modules.EncounterModule;
 import org.mitre.synthea.modules.Immunizations;
 import org.mitre.synthea.modules.LifecycleModule;
+import org.mitre.synthea.world.concepts.Costs;
 import org.mitre.synthea.world.concepts.HealthRecord.Code;
 
 /**
@@ -44,15 +43,22 @@ public class Concepts {
    * @throws Exception if any error occurs in reading the module files
    */
   public static void main(String[] args) throws Exception {
-    System.out.println("Performing an inventory of concepts into `output/concepts.csv`...");
+    System.out.println("Performing an inventory of concepts...");
     
-    List<String> output = getConceptInventory();
+    boolean onlyMissingCosts = Boolean.parseBoolean(args[0]);
+    List<String> output = getConceptInventory(onlyMissingCosts);
     
-    Path outFilePath = new File("./output/concepts.csv").toPath();
+    Path outFilePath;
+    if (onlyMissingCosts) {
+      outFilePath = new File("./output/concepts_without_costs.csv").toPath();
+    } else {
+      outFilePath = new File("./output/concepts.csv").toPath();
+    }
     
     Files.write(outFilePath, output, StandardOpenOption.CREATE);
     
-    System.out.println("Catalogued " + output.size() + " concepts.");
+    System.out.println("Catalogued " + output.size() + " concepts in file `"
+        + outFilePath.toString() + "`.");
     System.out.println("Done.");
   }
   
@@ -61,20 +67,17 @@ public class Concepts {
    * @return list of CSV strings
    * @throws Exception if any exception occurs in reading the modules.
    */
-  public static List<String> getConceptInventory() throws Exception {
+  public static List<String> getConceptInventory(boolean onlyMissingCosts) throws Exception {
     Map<Code,Set<String>> concepts = new TreeMap<Code,Set<String>>();
 
-    URL modulesFolder = ClassLoader.getSystemClassLoader().getResource("modules");
-    Path path = Paths.get(modulesFolder.toURI());
-    Files.walk(path).filter(Files::isReadable).filter(Files::isRegularFile)
-        .filter(f -> f.toString().endsWith(".json")).forEach(modulePath -> {
-          try (JsonReader reader = new JsonReader(new FileReader(modulePath.toString()))) {
-            JsonObject module = new JsonParser().parse(reader).getAsJsonObject();
-            inventoryModule(concepts, module);
-          } catch (IOException e) {
-            throw new RuntimeException("Unable to read modules", e);
-          }
-        });
+    Utilities.walkAllModules((modulesPath, modulePath) -> {
+      try (JsonReader reader = new JsonReader(new FileReader(modulePath.toString()))) {
+        JsonObject module = JsonParser.parseReader(reader).getAsJsonObject();
+        inventoryModule(concepts, module);
+      } catch (IOException e) {
+        throw new RuntimeException("Unable to read modules", e);
+      }
+    });
 
     inventoryCodes(concepts, CardiovascularDiseaseModule.getAllCodes(),
         CardiovascularDiseaseModule.class.getSimpleName());
@@ -93,7 +96,10 @@ public class Concepts {
       display = display.replaceAll("\\r\\n|\\r|\\n|,", " ").trim();
       String mods = modules.toString().replaceAll("\\[|\\]", "").replace(", ", "|").trim();
       String concept = code.system + ',' + code.code + ',' + display + ',' + mods;
-      conceptList.add(concept);
+      // If onlyMissingCosts is false, add to list. Otherwise check if code has a specified cost.
+      if (!onlyMissingCosts || !Costs.hasSpecifiedCost(code.code)) {
+        conceptList.add(concept);
+      }
     }
     
     return conceptList;
@@ -171,4 +177,5 @@ public class Concepts {
       concepts.get(code).add(module);
     });
   }
+
 }

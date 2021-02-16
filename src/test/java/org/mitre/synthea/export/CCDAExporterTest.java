@@ -29,6 +29,8 @@ public class CCDAExporterTest {
   
   @Test
   public void testCCDAExport() throws Exception {
+    TestHelper.loadTestProperties();
+    Generator.DEFAULT_STATE = Config.get("test_state.default", "Massachusetts");
     Config.set("exporter.baseDirectory", tempFolder.newFolder().toString());
     CDAUtil.loadPackages();
     List<String> validationErrors = new ArrayList<String>();
@@ -60,6 +62,7 @@ public class CCDAExporterTest {
       }
     }
 
-    assertEquals(0, validationErrors.size());
+    assertEquals("Validation of exported CCDA failed: "
+        + String.join("|", validationErrors), 0, validationErrors.size());
   }
 }

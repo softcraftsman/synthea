@@ -1,5 +1,6 @@
 package org.mitre.synthea.engine;
 
+import java.io.Serializable;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.List;
@@ -22,7 +23,7 @@ import org.mitre.synthea.world.concepts.HealthRecord.Medication;
  * must not modify state as instances of Logic within Modules are shared
  * across the population.
  */
-public abstract class Logic {
+public abstract class Logic implements Serializable {
   public List<String> remarks;
 
   /**
@@ -206,13 +207,24 @@ public abstract class Logic {
         for (Code code : this.codes) {
           // First, look in the current health record for the latest observation
           HealthRecord.Observation last = person.record.getLatestObservation(code.code);
+          if (person.lossOfCareEnabled) {
+            if (last == null) {
+              // If the observation is not in the current record,
+              // it could be in the uncovered health record.
+              last = person.lossOfCareRecord.getLatestObservation(code.code);
+            }
+            if (last == null) {
+              // If the observation still is not in the uncovered health record,
+              // it could be in the covered health record.
+              last = person.defaultRecord.getLatestObservation(code.code);
+            }
+          }
           if (last == null && person.hasMultipleRecords) {
-            // If the latest observation is not in the current health record,
+            // If the latest observation is not in the covered/uncovered health record,
             // then look in the module history.
             last = (HealthRecord.Observation)
                 findEntryFromHistory(person, HealthRecord.Observation.class, code);
-            if (Boolean.parseBoolean(
-                Config.get("exporter.split_records.duplicate_data", "false"))) {
+            if (Config.getAsBoolean("exporter.split_records.duplicate_data", false)) {
               person.record.currentEncounter(time).observations.add(last);
             }
           }
@@ -237,7 +249,14 @@ public abstract class Logic {
       } else if (operator.equals("is not nil")) {
         return observation != null;
       } else if (observation == null) {
-        throw new NullPointerException("Required observation is null.");
+        if (this.codes != null) {
+          throw new NullPointerException("Required observation " + this.codes + " is null.");
+        } else if (this.referencedByAttribute != null) {
+          throw new NullPointerException("Required observation \""
+              + this.referencedByAttribute + "\" is null.");
+        } else {
+          throw new NullPointerException("Required observation is null.");
+        }
       } else {
         return Utilities.compare(observation.value, this.value, operator);
       }
@@ -255,10 +274,12 @@ public abstract class Logic {
 
     @Override
     public boolean test(Person person, long time) {
-      if (value instanceof String) {
-        return value.equals(person.attributes.get(attribute));
-      } else {
+      try {
         return Utilities.compare(person.attributes.get(attribute), value, operator);
+      } catch (Exception e) {
+        String message = "Attribute Logic error: " + attribute + " " + operator + " " + value;
+        message += ": " + e.getMessage();
+        throw new RuntimeException(message, e);
       }
     }
   }
@@ -375,7 +396,7 @@ public abstract class Logic {
   public static class PriorState extends Logic {
     private String name;
     private String since;
-    private ExactWithUnit<Long> within;
+    private ExactWithUnit<Double> within;
     private Long window;
 
     @Override
@@ -426,8 +447,7 @@ public abstract class Logic {
             HealthRecord.Entry condition = (HealthRecord.Entry)
                 findEntryFromHistory(person, HealthRecord.Entry.class, code);
             if (condition != null && condition.stop == 0L) {
-              if (Boolean.parseBoolean(
-                  Config.get("exporter.split_records.duplicate_data", "false"))) {
+              if (Config.getAsBoolean("exporter.split_records.duplicate_data", false)) {
                 person.record.currentEncounter(time).conditions.add(condition);
               }
               return true;
@@ -466,8 +486,7 @@ public abstract class Logic {
             HealthRecord.Medication medication = (HealthRecord.Medication)
                 findEntryFromHistory(person, HealthRecord.Medication.class, code);
             if (medication != null && medication.stop == 0L) {
-              if (Boolean.parseBoolean(
-                  Config.get("exporter.split_records.duplicate_data", "false"))) {
+              if (Config.getAsBoolean("exporter.split_records.duplicate_data", false)) {
                 person.record.currentEncounter(time).medications.add(medication);
               }
               return true;
@@ -506,8 +525,7 @@ public abstract class Logic {
             HealthRecord.CarePlan carePlan = (HealthRecord.CarePlan)
                 findEntryFromHistory(person, HealthRecord.CarePlan.class, code);
             if (carePlan != null && carePlan.stop == 0L) {
-              if (Boolean.parseBoolean(
-                  Config.get("exporter.split_records.duplicate_data", "false"))) {
+              if (Config.getAsBoolean("exporter.split_records.duplicate_data", false)) {
                 person.record.currentEncounter(time).careplans.add(carePlan);
               }
               return true;

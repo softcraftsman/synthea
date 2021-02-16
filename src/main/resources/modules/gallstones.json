@@ -800,7 +800,7 @@
         },
         {
           "category": "laboratory",
-          "unit": "IU/L",
+          "unit": "[iU]/L",
           "codes": [
             {
               "system": "LOINC",
@@ -815,7 +815,7 @@
         },
         {
           "category": "laboratory",
-          "unit": "IU/L",
+          "unit": "[iU]/L",
           "codes": [
             {
               "system": "LOINC",
@@ -986,7 +986,7 @@
         },
         {
           "category": "laboratory",
-          "unit": "IU/L",
+          "unit": "[iU]/L",
           "codes": [
             {
               "system": "LOINC",
@@ -1035,7 +1035,7 @@
         },
         {
           "category": "laboratory",
-          "unit": "M/uL",
+          "unit": "10*6/uL",
           "codes": [
             {
               "system": "LOINC",
@@ -1226,6 +1226,79 @@
         "high": 10,
         "unit": "minutes"
       },
+      "direct_transition": "ECG_Sim"
+    },
+    "ECG_Sim": {
+      "type": "Physiology",
+      "model": "circulation/McSharry2003_Synthetic_ECG.xml",
+      "solver": "runge_kutta",
+      "step_size": 0.01,
+      "sim_duration": 4,
+      "lead_time": 0,
+      "inputs": [
+        {
+          "from_exp": "#{BMI} * 0.497 + 56.15",
+          "to": "hrmean"
+        }
+      ],
+      "outputs": [
+        {
+          "from_list": "zf",
+          "to": "ecg_result",
+          "type": "Attribute"
+        }
+      ],
+      "direct_transition": "ECG_Data",
+      "alt_direct_transition": "Gall_Bladder_Imaging"
+    },
+    "ECG_Data": {
+      "type": "Observation",
+      "category": "procedure",
+      "unit": "",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": 29303009,
+          "display": "Electrocardiographic procedure"
+        }
+      ],
+      "sampled_data": {
+        "attributes": [
+          "ecg_result"
+        ]
+      },
+      "direct_transition": "ECG_Chart"
+    },
+    "ECG_Chart": {
+      "type": "Observation",
+      "category": "procedure",
+      "unit": "",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": 29303009,
+          "display": "Electrocardiographic procedure"
+        }
+      ],
+      "attachment": {
+        "chart": {
+          "type": "line",
+          "title": "Electrocardiogram",
+          "axis_attribute_x": "time",
+          "width": 400,
+          "height": 200,
+          "series": [
+            {
+              "attribute": "ecg_result"
+            }
+          ]
+        }
+      },
+      "direct_transition": "Clear_ECG_result"
+    },
+    "Clear_ECG_result": {
+      "type": "SetAttribute",
+      "attribute": "ecg_result",
       "direct_transition": "Gall_Bladder_Imaging"
     },
     "Heparin": {
@@ -1307,5 +1380,6 @@
       "direct_transition": "Complete_Blood_Count",
       "medication_order": "Antiemetic"
     }
-  }
+  },
+  "gmf_version": 1
 }
